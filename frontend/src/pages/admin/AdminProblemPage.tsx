@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { problemApi, competitionApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, GripVertical } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
 
@@ -28,6 +30,7 @@ export default function AdminProblemPage() {
     input: '', expectedOutput: '', sample: false, hidden: true, points: 0, orderIndex: 0
   });
   const [addingTC, setAddingTC] = useState(false);
+  const [descTab, setDescTab] = useState<'write' | 'preview'>('write');
 
   useEffect(() => {
     if (!isNew) {
@@ -151,11 +154,45 @@ export default function AdminProblemPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-arena-text-dim mb-1.5">Description (Markdown)</label>
-            <textarea value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="input min-h-40 resize-y font-mono text-xs"
-              placeholder="## Problem Statement&#10;&#10;Given an array..." />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm text-arena-text-dim">Description (Markdown)</label>
+              <div className="flex bg-arena-bg border border-arena-border rounded-lg p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDescTab('write')}
+                  className={`px-3 py-1 rounded-md transition-colors ${descTab === 'write' ? 'bg-arena-surface text-arena-text font-medium shadow-sm' : 'text-arena-muted hover:text-arena-text'}`}
+                >
+                  Write
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescTab('preview')}
+                  className={`px-3 py-1 rounded-md transition-colors ${descTab === 'preview' ? 'bg-arena-surface text-arena-text font-medium shadow-sm' : 'text-arena-muted hover:text-arena-text'}`}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            {descTab === 'write' ? (
+              <textarea
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                className="input min-h-40 resize-y font-mono text-xs"
+                placeholder="## Problem Statement&#10;&#10;Given an array..."
+              />
+            ) : (
+              <div className="input min-h-40 p-4 overflow-y-auto prose-arena bg-arena-bg/60">
+                {form.description ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.description}</ReactMarkdown>
+                ) : (
+                  <span className="text-arena-muted italic">Nothing to preview.</span>
+                )}
+              </div>
+            )}
+            <p className="text-xs text-arena-muted mt-1.5">
+              💡 Tip: Put image files in <code className="text-arena-accent font-mono">frontend/public/problems/</code> and embed with <code className="text-arena-accent font-mono">![Alt text](/problems/filename.png)</code>.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

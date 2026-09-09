@@ -101,4 +101,8 @@
   .prose-arena pre code {
     @apply bg-transparent p-0;
   }
+
+  .prose-arena img {
+    @apply max-w-full h-auto rounded-lg my-3 border border-arena-border/50 bg-arena-surface block shadow-sm;
+  }
 }
