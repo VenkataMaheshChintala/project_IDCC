@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # ─── Infrastructure ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: codearena-postgres
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-codearena}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      POSTGRES_DB: codearena
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-codearena}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codearena-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: codearena-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - codearena-net
+
+  # ─── Services ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: codearena-backend
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/codearena
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-codearena}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-changeme}
+      - REDIS_HOST=redis
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_that_is_at_least_32_bytes_long_change_me_in_prod}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - codearena-net
+
+  judge-worker:
+    build:
+      context: ./judge-worker
+      dockerfile: ../docker/Dockerfile.judge
+    container_name: codearena-judge-worker
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/codearena
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-codearena}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-changeme}
+      - REDIS_HOST=redis
+    # Mount the Docker socket so the worker can spin up sandbox containers
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - codearena-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: codearena-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - codearena-net
+
+networks:
+  codearena-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

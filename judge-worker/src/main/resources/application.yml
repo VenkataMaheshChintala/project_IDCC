@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: codearena-judge-worker
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/codearena}
+    username: ${DATABASE_USERNAME:codearena}
+    password: ${DATABASE_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: false   # Migrations managed by backend
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 10000ms
+
+server:
+  port: 8090
+
+judge:
+  submission-queue-key: "codearena:submissions:queue"
+  run-queue-key: "codearena:run:queue"
+  run-result-prefix: "codearena:run:result:"
+  cpu-limit: ${JUDGE_CPU_LIMIT:0.5}
+  memory-limit-mb: ${JUDGE_MEMORY_LIMIT_MB:256}
+  timeout-seconds: ${JUDGE_TIMEOUT_SECONDS:10}
+  max-processes: ${JUDGE_MAX_PROCESSES:50}
+  docker-image: ${JUDGE_DOCKER_IMAGE:eclipse-temurin:21-jdk-alpine}
+  worker-threads: 4
+
+logging:
+  level:
+    com.codearena.judge: INFO

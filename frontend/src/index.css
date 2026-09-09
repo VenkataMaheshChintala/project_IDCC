@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  body {
+    @apply bg-arena-bg text-arena-text font-sans antialiased;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #111827; }
+  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-arena-accent hover:bg-arena-accent-hover text-white text-sm font-medium rounded-lg
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-arena-accent focus:ring-offset-2
+           focus:ring-offset-arena-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-arena-border hover:bg-gray-700 text-arena-text text-sm font-medium rounded-lg
+           border border-arena-border transition-all duration-200 focus:outline-none;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-arena-red/10 hover:bg-arena-red/20 text-arena-red text-sm font-medium rounded-lg
+           border border-arena-red/30 transition-all duration-200;
+  }
+
+  .btn-success {
+    @apply px-4 py-2 bg-arena-green/10 hover:bg-arena-green/20 text-arena-green text-sm font-medium rounded-lg
+           border border-arena-green/30 transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-arena-surface border border-arena-border rounded-xl p-6;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 bg-arena-bg border border-arena-border rounded-lg text-arena-text
+           placeholder-arena-muted text-sm focus:outline-none focus:ring-2 focus:ring-arena-accent
+           focus:border-arena-accent transition-colors;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-live    { @apply badge bg-arena-green/20 text-arena-green border border-arena-green/30; }
+  .badge-draft   { @apply badge bg-gray-500/20 text-gray-400 border border-gray-500/30; }
+  .badge-upcoming { @apply badge bg-arena-blue/20 text-arena-blue border border-arena-blue/30; }
+  .badge-ended   { @apply badge bg-gray-600/20 text-gray-500 border border-gray-600/30; }
+  .badge-archived { @apply badge bg-gray-700/20 text-gray-600 border border-gray-700/30; }
+
+  .verdict-accepted  { @apply text-arena-green font-semibold; }
+  .verdict-wa        { @apply text-arena-red font-semibold; }
+  .verdict-tle       { @apply text-arena-yellow font-semibold; }
+  .verdict-ce        { @apply text-orange-400 font-semibold; }
+  .verdict-re        { @apply text-purple-400 font-semibold; }
+  .verdict-queued    { @apply text-arena-muted; }
+  .verdict-running   { @apply text-arena-blue; }
+
+  .nav-link {
+    @apply flex items-center gap-2 px-3 py-2 text-sm text-arena-text-dim hover:text-arena-text
+           hover:bg-white/5 rounded-lg transition-all duration-200;
+  }
+
+  .nav-link.active {
+    @apply text-arena-accent bg-arena-accent/10;
+  }
+
+  .table-row {
+    @apply border-b border-arena-border/50 hover:bg-white/[0.02] transition-colors;
+  }
+
+  .prose-arena {
+    @apply text-arena-text-dim text-sm leading-relaxed;
+  }
+
+  .prose-arena h1, .prose-arena h2, .prose-arena h3 {
+    @apply text-arena-text font-semibold mt-4 mb-2;
+  }
+
+  .prose-arena code {
+    @apply bg-arena-bg px-1.5 py-0.5 rounded font-mono text-xs text-arena-accent;
+  }
+
+  .prose-arena pre {
+    @apply bg-arena-bg border border-arena-border rounded-lg p-4 overflow-x-auto;
+  }
+
+  .prose-arena pre code {
+    @apply bg-transparent p-0;
+  }
+}

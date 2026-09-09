@@ -1,0 +1,34 @@
+# ─── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+WORKDIR /app
+
+COPY pom.xml .
+# Download dependencies in a cacheable layer
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -B
+
+COPY src ./src
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -DskipTests -B && \
+    mv target/*.jar target/app.jar
+
+# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# The judge worker needs access to the Docker daemon.
+# This means we must mount /var/run/docker.sock into this container.
+# It runs as root to interact with docker socket seamlessly in local testing.
+
+COPY --from=builder /app/target/app.jar app.jar
+
+# Install tar (required by docker java to copy files into sandbox)
+RUN apk add --no-cache tar
+
+# Pre-pull the sandbox image so it's cached in the host daemon
+ENV JUDGE_DOCKER_IMAGE=eclipse-temurin:21-jdk-alpine
+
+ENTRYPOINT ["java", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-jar", "app.jar"]
