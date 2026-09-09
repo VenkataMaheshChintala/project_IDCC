@@ -3,8 +3,7 @@ import { authApi } from '../api/endpoints';
 
 interface User {
   id: number;
-  email: string;
-  username: string;
+  teamName: string;
   role: 'ADMIN' | 'PARTICIPANT';
   createdAt: string;
 }

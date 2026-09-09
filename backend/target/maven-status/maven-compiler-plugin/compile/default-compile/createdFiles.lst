@@ -1,0 +1,6 @@
+com/codearena/domain/Problem$Difficulty.class
+com/codearena/domain/Competition.class
+com/codearena/domain/TestCase.class
+com/codearena/domain/Problem.class
+com/codearena/domain/Competition$Status.class
+com/codearena/repository/TestCaseRepository.class

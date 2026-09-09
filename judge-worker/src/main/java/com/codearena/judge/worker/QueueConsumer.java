@@ -5,8 +5,10 @@ import com.codearena.judge.model.ExecutionResult;
 import com.codearena.judge.model.JudgeJob;
 import com.codearena.judge.store.SubmissionStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,23 +16,34 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Redis queue consumer. Polls the submission queue and dispatches jobs
- * to the JudgeEngine.
+ * Redis queue consumer. Polls the submission queue concurrently with worker threads
+ * and dispatches jobs to the JudgeEngine.
  *
- * Uses BRPOP (blocking right-pop) to avoid busy-waiting.
+ * Uses BRPOP (blocking right-pop) across worker threads to avoid busy-waiting.
  */
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class QueueConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(QueueConsumer.class);
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
     private final JudgeEngine judgeEngine;
     private final SubmissionStore submissionStore;
+
+    public QueueConsumer(StringRedisTemplate redis, ObjectMapper objectMapper,
+                         JudgeEngine judgeEngine, SubmissionStore submissionStore) {
+        this.redis = redis;
+        this.objectMapper = objectMapper;
+        this.judgeEngine = judgeEngine;
+        this.submissionStore = submissionStore;
+    }
 
     @Value("${judge.submission-queue-key}")
     private String submissionQueueKey;
@@ -45,52 +58,90 @@ public class QueueConsumer {
     private int workerThreads;
 
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private ExecutorService submissionExecutor;
+
+    @PostConstruct
+    public void startWorkers() {
+        int threads = Math.max(1, workerThreads);
+        submissionExecutor = Executors.newFixedThreadPool(threads);
+        for (int i = 1; i <= threads; i++) {
+            final int workerId = i;
+            submissionExecutor.submit(() -> pollSubmissionsLoop(workerId));
+        }
+        log.info("[Worker] Started {} concurrent submission worker threads", threads);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        running.set(false);
+        if (submissionExecutor != null) {
+            submissionExecutor.shutdown();
+            try {
+                if (!submissionExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    submissionExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                submissionExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+        log.info("[Worker] Submission worker pool stopped");
+    }
 
     /**
-     * Poll submission queue every 100ms. Spring @Scheduled with
-     * fixedDelay ensures sequential processing per thread.
+     * Long-polling loop executed by each worker thread.
      */
-    @Scheduled(fixedDelay = 100)
-    public void processSubmissions() {
-        try {
-            // BRPOP with 1s timeout
-            var item = redis.opsForList().rightPop(submissionQueueKey, Duration.ofSeconds(1));
-            if (item == null) return;
-
-            JudgeJob job = objectMapper.readValue(item, JudgeJob.class);
-            log.info("[Worker] Processing submission={}", job.getSubmissionId());
-
+    private void pollSubmissionsLoop(int workerId) {
+        log.info("[Worker-{}] Submission listener started", workerId);
+        while (running.get()) {
             try {
-                JudgeEngine.JudgeResult result = judgeEngine.judge(job);
+                var item = redis.opsForList().rightPop(submissionQueueKey, Duration.ofSeconds(1));
+                if (item == null) continue;
 
-                // Update leaderboard after judging
-                if (job.getCompetitionId() != null && job.getUserId() != null) {
-                    submissionStore.updateLeaderboard(job.getCompetitionId(), job.getUserId());
+                JudgeJob job = objectMapper.readValue(item, JudgeJob.class);
+                log.info("[Worker-{}] Processing submission={}", workerId, job.getSubmissionId());
+
+                try {
+                    JudgeEngine.JudgeResult result = judgeEngine.judge(job);
+
+                    // Update leaderboard after judging
+                    if (job.getCompetitionId() != null && job.getUserId() != null) {
+                        submissionStore.updateLeaderboard(job.getCompetitionId(), job.getUserId());
+                    }
+
+                    log.info("[Worker-{}] Completed submission={} status={} score={}/{}",
+                            workerId, job.getSubmissionId(), result.status(), result.score(), result.maxScore());
+
+                } catch (Exception e) {
+                    log.error("[Worker-{}] Failed to judge submission={}: {}", workerId, job.getSubmissionId(), e.getMessage(), e);
+                    try {
+                        submissionStore.saveResult(job.getSubmissionId(), "SYSTEM_ERROR",
+                                0, 0, 0, 0L, 0, "Internal judge error: " + e.getMessage(),
+                                java.util.List.of(), java.time.Instant.now());
+                    } catch (Exception saveEx) {
+                        log.error("[Worker-{}] Failed to save SYSTEM_ERROR for submission={}", workerId, job.getSubmissionId());
+                    }
                 }
-
-                log.info("[Worker] Completed submission={} status={} score={}/{}",
-                        job.getSubmissionId(), result.status(), result.score(), result.maxScore());
 
             } catch (Exception e) {
-                log.error("[Worker] Failed to judge submission={}: {}", job.getSubmissionId(), e.getMessage(), e);
-                try {
-                    submissionStore.saveResult(job.getSubmissionId(), "SYSTEM_ERROR",
-                            0, 0, 0, 0L, 0, "Internal judge error: " + e.getMessage(),
-                            java.util.List.of(), java.time.Instant.now());
-                } catch (Exception saveEx) {
-                    log.error("[Worker] Failed to save SYSTEM_ERROR for submission={}", job.getSubmissionId());
+                if (running.get()) {
+                    log.debug("[Worker-{}] Queue poll error: {}", workerId, e.getMessage());
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
-
-        } catch (Exception e) {
-            log.debug("[Worker] Queue poll error: {}", e.getMessage());
         }
+        log.info("[Worker-{}] Submission listener stopped", workerId);
     }
 
     /**
      * Poll run queue (code execution without scoring).
      */
-    @Scheduled(fixedDelay = 150)
+    @Scheduled(fixedDelay = 100)
     public void processRuns() {
         try {
             var item = redis.opsForList().rightPop(runQueueKey, Duration.ofMillis(500));

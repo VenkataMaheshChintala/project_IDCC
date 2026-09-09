@@ -2,9 +2,9 @@ import api from './client';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
-  register: (data: { email: string; username: string; password: string }) =>
+  register: (data: { teamName: string; student1Name: string; student2Name: string; student1Rollno: string; student2Rollno: string; phoneNumber: string; password: string; }) =>
     api.post('/auth/register', data).then(r => r.data),
-  login: (data: { email: string; password: string }) =>
+  login: (data: { teamName: string; password: string }) =>
     api.post('/auth/login', data).then(r => r.data),
   me: () => api.get('/auth/me').then(r => r.data),
 };

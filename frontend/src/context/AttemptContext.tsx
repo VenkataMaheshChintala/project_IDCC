@@ -19,11 +19,25 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     return saved ? Number(saved) : null;
   });
   const [showWarning, setShowWarning] = useState(false);
+  const [violations, setViolations] = useState(() => {
+    const saved = sessionStorage.getItem('fullscreen_violations');
+    return saved ? Number(saved) : 0;
+  });
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (inAttempt && !document.fullscreenElement) {
-        setShowWarning(true);
+        setViolations(prev => {
+          const newCount = prev + 1;
+          sessionStorage.setItem('fullscreen_violations', String(newCount));
+          if (newCount >= 3) {
+            alert('You have exited fullscreen 3 times. Your competition attempt has been ended.');
+            endAttempt();
+          } else {
+            setShowWarning(true);
+          }
+          return newCount;
+        });
       } else if (inAttempt && document.fullscreenElement) {
         setShowWarning(false);
       }
@@ -38,6 +52,26 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [inAttempt]);
+
+  // Disable right click completely when competition attempt is active
+  useEffect(() => {
+    if (!inAttempt) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return false;
+    };
+
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('contextmenu', handleContextMenu, true);
+
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('contextmenu', handleContextMenu, true);
     };
   }, [inAttempt]);
 
@@ -71,6 +105,8 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     setActiveCompId(null);
     sessionStorage.removeItem('in_attempt');
     sessionStorage.removeItem('attempt_comp_id');
+    sessionStorage.removeItem('fullscreen_violations');
+    setViolations(0);
     setShowWarning(false);
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.error(err));
@@ -98,8 +134,11 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
           <div className="bg-arena-surface border border-arena-border p-8 rounded-xl max-w-md w-full text-center shadow-2xl animate-scale-up">
             <AlertTriangle className="w-16 h-16 text-arena-red mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-arena-text mb-3">Attempt Paused</h2>
-            <p className="text-arena-text-dim mb-6">
+            <p className="text-arena-text-dim mb-2">
               You must remain in fullscreen mode while attempting the competition. Exiting fullscreen pauses your attempt and may be logged as suspicious behavior.
+            </p>
+            <p className="text-arena-red font-bold mb-6">
+              Warning {violations} of 3: At 3 warnings, your attempt will end automatically.
             </p>
             <div className="flex flex-col gap-3">
               <button 

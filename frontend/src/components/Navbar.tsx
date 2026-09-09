@@ -62,7 +62,7 @@ export function Navbar() {
                 <div className="w-6 h-6 rounded-full bg-arena-accent/20 flex items-center justify-center">
                   <User className="w-3 h-3 text-arena-accent" />
                 </div>
-                <span className="text-sm text-arena-text-dim">{user.username}</span>
+                <span className="text-sm text-arena-text-dim">{user.teamName}</span>
                 {isAdmin && (
                   <span className="text-xs bg-arena-accent/20 text-arena-accent px-1.5 py-0.5 rounded">
                     Admin

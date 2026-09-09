@@ -7,7 +7,15 @@ import { Code2, AlertCircle, CheckCircle } from 'lucide-react';
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: '', username: '', password: '' });
+  const [form, setForm] = useState({ 
+    teamName: '', 
+    student1Name: '', 
+    student2Name: '', 
+    student1Rollno: '', 
+    student2Rollno: '', 
+    phoneNumber: '', 
+    password: '' 
+  });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -63,27 +71,69 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-arena-text-dim mb-1.5">Email</label>
+              <label className="block text-sm text-arena-text-dim mb-1.5">Team Name</label>
               <input
-                type="email" value={form.email} id="email"
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className={`input ${fieldErrors.email ? 'border-arena-red' : ''}`}
-                placeholder="you@example.com" required
+                type="text" value={form.teamName} id="teamName"
+                onChange={e => setForm(f => ({ ...f, teamName: e.target.value }))}
+                className={`input ${fieldErrors.teamName ? 'border-arena-red' : ''}`}
+                placeholder="coolcoders" required minLength={3} maxLength={30}
               />
-              {fieldErrors.email && <p className="text-xs text-arena-red mt-1">{fieldErrors.email}</p>}
+              {fieldErrors.teamName && <p className="text-xs text-arena-red mt-1">{fieldErrors.teamName}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-arena-text-dim mb-1.5">Student 1 Name</label>
+                <input
+                  type="text" value={form.student1Name} id="student1Name"
+                  onChange={e => setForm(f => ({ ...f, student1Name: e.target.value }))}
+                  className={`input ${fieldErrors.student1Name ? 'border-arena-red' : ''}`}
+                  placeholder="John Doe" required
+                />
+                {fieldErrors.student1Name && <p className="text-xs text-arena-red mt-1">{fieldErrors.student1Name}</p>}
+              </div>
+              <div>
+                <label className="block text-sm text-arena-text-dim mb-1.5">Student 1 Roll No</label>
+                <input
+                  type="text" value={form.student1Rollno} id="student1Rollno"
+                  onChange={e => setForm(f => ({ ...f, student1Rollno: e.target.value }))}
+                  className={`input ${fieldErrors.student1Rollno ? 'border-arena-red' : ''}`}
+                  placeholder="CS20B101" required
+                />
+                {fieldErrors.student1Rollno && <p className="text-xs text-arena-red mt-1">{fieldErrors.student1Rollno}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-arena-text-dim mb-1.5">Student 2 Name (Optional)</label>
+                <input
+                  type="text" value={form.student2Name} id="student2Name"
+                  onChange={e => setForm(f => ({ ...f, student2Name: e.target.value }))}
+                  className={`input ${fieldErrors.student2Name ? 'border-arena-red' : ''}`}
+                  placeholder="Jane Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-arena-text-dim mb-1.5">Student 2 Roll No (Optional)</label>
+                <input
+                  type="text" value={form.student2Rollno} id="student2Rollno"
+                  onChange={e => setForm(f => ({ ...f, student2Rollno: e.target.value }))}
+                  className={`input ${fieldErrors.student2Rollno ? 'border-arena-red' : ''}`}
+                  placeholder="CS20B102"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm text-arena-text-dim mb-1.5">Username</label>
+              <label className="block text-sm text-arena-text-dim mb-1.5">Phone Number</label>
               <input
-                type="text" value={form.username} id="username"
-                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                className={`input ${fieldErrors.username ? 'border-arena-red' : ''}`}
-                placeholder="coolcoder" required minLength={3} maxLength={30}
+                type="text" value={form.phoneNumber} id="phoneNumber"
+                onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))}
+                className={`input ${fieldErrors.phoneNumber ? 'border-arena-red' : ''}`}
+                placeholder="+1 234 567 8900" required
               />
-              {fieldErrors.username
-                ? <p className="text-xs text-arena-red mt-1">{fieldErrors.username}</p>
-                : <p className="text-xs text-arena-muted mt-1">Letters, numbers, underscores only</p>}
+              {fieldErrors.phoneNumber && <p className="text-xs text-arena-red mt-1">{fieldErrors.phoneNumber}</p>}
             </div>
 
             <div>

@@ -5,8 +5,8 @@ import com.codearena.judge.model.ExecutionResult;
 import com.codearena.judge.model.JudgeJob;
 import com.codearena.judge.sandbox.DockerSandbox;
 import com.codearena.judge.store.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,13 +18,19 @@ import java.util.List;
  * and calculates the score.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class JudgeEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(JudgeEngine.class);
 
     private final DockerSandbox sandbox;
     private final OutputComparator comparator;
     private final SubmissionStore submissionStore;
+
+    public JudgeEngine(DockerSandbox sandbox, OutputComparator comparator, SubmissionStore submissionStore) {
+        this.sandbox = sandbox;
+        this.comparator = comparator;
+        this.submissionStore = submissionStore;
+    }
 
     /**
      * Judge a submission job. Updates the database directly.
@@ -44,73 +50,101 @@ public class JudgeEngine {
             return JudgeResult.accepted(0, 0, 0);
         }
 
-        // ── Run against each test case ──────────────────────────────────────
         List<TestCaseResultRecord> results = new ArrayList<>();
         int totalScore = 0;
         int maxScore = 0;
         long maxTime = 0;
         String finalStatus = "ACCEPTED";
         String compilationError = null;
-
         int passedTestCases = 0;
 
         for (TestCaseRecord tc : testCases) {
             maxScore += tc.points();
+        }
 
-            ExecutionResult execResult = sandbox.execute(
-                    job.getLanguage(), job.getSourceCode(), job.getRunnerCode(), tc.input(), job.getTimeLimitMs(), job.getMemoryLimitMb());
+        List<String> inputs = testCases.stream()
+                .map(tc -> tc.input() != null ? tc.input() : "")
+                .toList();
 
-            String tcStatus;
-            int pointsEarned = 0;
+        try (DockerSandbox.SubmissionSession session = sandbox.createSession(
+                job.getLanguage(), job.getSourceCode(), job.getRunnerCode(), inputs, job.getMemoryLimitMb())) {
 
-            switch (execResult.getVerdict()) {
-                case ACCEPTED -> {
-                    boolean correct = comparator.matches(tc.expectedOutput(), execResult.getStdout());
-                    if (correct) {
-                        tcStatus = "ACCEPTED";
-                        pointsEarned = tc.points();
-                        totalScore += pointsEarned;
-                        passedTestCases++;
-                    } else {
-                        tcStatus = "WRONG_ANSWER";
-                        if (finalStatus.equals("ACCEPTED")) finalStatus = "WRONG_ANSWER";
+            // ── 1. Compile Once ─────────────────────────────────────────────
+            ExecutionResult compileResult = session.compile();
+            if (compileResult.getVerdict() != ExecutionResult.Verdict.ACCEPTED) {
+                finalStatus = "COMPILATION_ERROR";
+                compilationError = truncate(compileResult.getStderr(), 2000);
+
+                for (TestCaseRecord tc : testCases) {
+                    results.add(new TestCaseResultRecord(
+                            tc.id(), "COMPILATION_ERROR", 0, compileResult.getExecutionTimeMs(),
+                            0, null, tc.orderIndex()
+                    ));
+                }
+
+                log.info("[Judge] submission={} failed compilation", job.getSubmissionId());
+                submissionStore.saveResult(job.getSubmissionId(), finalStatus,
+                        0, maxScore, 0, compileResult.getExecutionTimeMs(), 0, compilationError, results, Instant.now());
+
+                return new JudgeResult(finalStatus, 0, maxScore, compileResult.getExecutionTimeMs());
+            }
+
+            // ── 2. Run against each test case ───────────────────────────────
+            for (int i = 0; i < testCases.size(); i++) {
+                TestCaseRecord tc = testCases.get(i);
+                ExecutionResult execResult = session.executeTestCase(i, job.getTimeLimitMs());
+
+                String tcStatus;
+                int pointsEarned = 0;
+
+                switch (execResult.getVerdict()) {
+                    case ACCEPTED -> {
+                        boolean correct = comparator.matches(tc.expectedOutput(), execResult.getStdout());
+                        if (correct) {
+                            tcStatus = "ACCEPTED";
+                            pointsEarned = tc.points();
+                            totalScore += pointsEarned;
+                            passedTestCases++;
+                        } else {
+                            tcStatus = "WRONG_ANSWER";
+                            if (finalStatus.equals("ACCEPTED")) finalStatus = "WRONG_ANSWER";
+                        }
+                    }
+                    case TIME_LIMIT_EXCEEDED -> {
+                        tcStatus = "TIME_LIMIT_EXCEEDED";
+                        if (!finalStatus.equals("COMPILATION_ERROR")) finalStatus = "TIME_LIMIT_EXCEEDED";
+                    }
+                    case RUNTIME_ERROR -> {
+                        tcStatus = "RUNTIME_ERROR";
+                        if (!finalStatus.equals("COMPILATION_ERROR") && !finalStatus.equals("TIME_LIMIT_EXCEEDED"))
+                            finalStatus = "RUNTIME_ERROR";
+                    }
+                    case MEMORY_LIMIT_EXCEEDED -> {
+                        tcStatus = "MEMORY_LIMIT_EXCEEDED";
+                        if (finalStatus.equals("ACCEPTED")) finalStatus = "MEMORY_LIMIT_EXCEEDED";
+                    }
+                    default -> {
+                        tcStatus = "SYSTEM_ERROR";
+                        if (finalStatus.equals("ACCEPTED")) finalStatus = "SYSTEM_ERROR";
                     }
                 }
-                case COMPILATION_ERROR -> {
-                    tcStatus = "COMPILATION_ERROR";
-                    finalStatus = "COMPILATION_ERROR";
-                    compilationError = truncate(execResult.getStderr(), 2000);
+
+                if (execResult.getExecutionTimeMs() > maxTime) {
+                    maxTime = execResult.getExecutionTimeMs();
                 }
-                case TIME_LIMIT_EXCEEDED -> {
-                    tcStatus = "TIME_LIMIT_EXCEEDED";
-                    if (!finalStatus.equals("COMPILATION_ERROR")) finalStatus = "TIME_LIMIT_EXCEEDED";
-                }
-                case RUNTIME_ERROR -> {
-                    tcStatus = "RUNTIME_ERROR";
-                    if (!finalStatus.equals("COMPILATION_ERROR") && !finalStatus.equals("TIME_LIMIT_EXCEEDED"))
-                        finalStatus = "RUNTIME_ERROR";
-                }
-                case MEMORY_LIMIT_EXCEEDED -> {
-                    tcStatus = "MEMORY_LIMIT_EXCEEDED";
-                    if (finalStatus.equals("ACCEPTED")) finalStatus = "MEMORY_LIMIT_EXCEEDED";
-                }
-                default -> {
-                    tcStatus = "SYSTEM_ERROR";
-                    if (finalStatus.equals("ACCEPTED")) finalStatus = "SYSTEM_ERROR";
-                }
+
+                results.add(new TestCaseResultRecord(
+                        tc.id(), tcStatus, pointsEarned, execResult.getExecutionTimeMs(),
+                        execResult.getMemoryUsedMb(), execResult.getStdout(), tc.orderIndex()
+                ));
             }
 
-            if (execResult.getExecutionTimeMs() > maxTime) {
-                maxTime = execResult.getExecutionTimeMs();
-            }
-
-            results.add(new TestCaseResultRecord(
-                    tc.id(), tcStatus, pointsEarned, execResult.getExecutionTimeMs(),
-                    execResult.getMemoryUsedMb(), execResult.getStdout(), tc.orderIndex()
-            ));
-
-            // Stop after compilation error — all remaining tests would fail the same way
-            if ("COMPILATION_ERROR".equals(tcStatus)) break;
+        } catch (Exception e) {
+            log.error("[Judge] Unexpected submission error for id={}: {}", job.getSubmissionId(), e.getMessage(), e);
+            finalStatus = "SYSTEM_ERROR";
+            submissionStore.saveResult(job.getSubmissionId(), finalStatus,
+                    0, maxScore, 0, 0L, 0, "Execution error: " + e.getMessage(), results, Instant.now());
+            return new JudgeResult(finalStatus, 0, maxScore, 0L);
         }
 
         // If partial score but all passed, ACCEPTED; else use worst verdict

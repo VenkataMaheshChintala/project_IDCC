@@ -8,15 +8,17 @@ import jakarta.validation.constraints.Size;
 public sealed interface AuthDtos {
 
     record RegisterRequest(
-            @NotBlank @Email String email,
-            @NotBlank @Size(min = 3, max = 30)
-            @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username can only contain letters, numbers, and underscores")
-            String username,
+            @NotBlank @Size(min = 3, max = 30) String teamName,
+            @NotBlank String student1Name,
+            String student2Name,
+            @NotBlank String student1Rollno,
+            String student2Rollno,
+            @NotBlank String phoneNumber,
             @NotBlank @Size(min = 8, max = 100) String password
     ) implements AuthDtos {}
 
     record LoginRequest(
-            @NotBlank @Email String email,
+            @NotBlank String teamName,
             @NotBlank String password
     ) implements AuthDtos {}
 
@@ -28,8 +30,7 @@ public sealed interface AuthDtos {
 
     record UserDto(
             Long id,
-            String email,
-            String username,
+            String teamName,
             String role,
             String createdAt
     ) implements AuthDtos {}

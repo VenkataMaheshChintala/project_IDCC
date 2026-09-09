@@ -1,7 +1,7 @@
 package com.codearena.judge.store;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +15,15 @@ import java.util.List;
  * Avoids full JPA stack in the worker for simplicity and performance.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class SubmissionStore {
 
+    private static final Logger log = LoggerFactory.getLogger(SubmissionStore.class);
+
     private final JdbcTemplate jdbc;
+
+    public SubmissionStore(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     public void updateStatus(Long submissionId, String status) {
         jdbc.update(

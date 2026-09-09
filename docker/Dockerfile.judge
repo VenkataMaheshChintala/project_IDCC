@@ -3,13 +3,10 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 
 COPY pom.xml .
-# Download dependencies in a cacheable layer
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn dependency:go-offline -B
-
 COPY src ./src
+
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -DskipTests -B && \
+    mvn clean package -DskipTests -B && \
     mv target/*.jar target/app.jar
 
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────

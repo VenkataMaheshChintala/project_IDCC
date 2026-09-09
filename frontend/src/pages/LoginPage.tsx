@@ -7,7 +7,7 @@ import { Code2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ teamName: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
@@ -49,16 +49,16 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-arena-text-dim mb-1.5">Email</label>
+              <label className="block text-sm text-arena-text-dim mb-1.5">Team Name</label>
               <input
-                type="email"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                type="text"
+                value={form.teamName}
+                onChange={e => setForm(f => ({ ...f, teamName: e.target.value }))}
                 className="input"
-                placeholder="you@example.com"
+                placeholder="coolcoders"
                 required
                 autoFocus
-                id="email"
+                id="teamName"
               />
             </div>
 
@@ -104,26 +104,7 @@ export default function LoginPage() {
             <Link to="/register" className="text-arena-accent hover:underline">Register</Link>
           </p>
 
-          {/* Dev credentials hint */}
-          <div className="border-t border-arena-border pt-4">
-            <p className="text-xs text-arena-muted text-center mb-2">Demo credentials</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setForm({ email: 'admin@codearena.local', password: 'Admin@123' })}
-                className="px-3 py-2 bg-arena-bg border border-arena-border rounded-lg text-arena-text-dim hover:border-arena-accent/50 transition-colors"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ email: 'student@codearena.local', password: 'Student@123' })}
-                className="px-3 py-2 bg-arena-bg border border-arena-border rounded-lg text-arena-text-dim hover:border-arena-accent/50 transition-colors"
-              >
-                Participant
-              </button>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

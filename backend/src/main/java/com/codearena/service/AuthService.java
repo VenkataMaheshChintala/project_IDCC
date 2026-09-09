@@ -23,16 +23,17 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException("Email already registered");
-        }
-        if (userRepository.existsByUsername(request.username())) {
-            throw new ConflictException("Username already taken");
+        if (userRepository.existsByUsername(request.teamName())) {
+            throw new ConflictException("Team name already taken");
         }
 
         User user = User.builder()
-                .email(request.email())
-                .username(request.username())
+                .username(request.teamName())
+                .student1Name(request.student1Name())
+                .student2Name(request.student2Name())
+                .student1Rollno(request.student1Rollno())
+                .student2Rollno(request.student2Rollno())
+                .phoneNumber(request.phoneNumber())
                 .password(passwordEncoder.encode(request.password()))
                 .role(User.Role.PARTICIPANT)
                 .enabled(true)
@@ -45,10 +46,10 @@ public class AuthService {
 
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                new UsernamePasswordAuthenticationToken(request.teamName(), request.password())
         );
 
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByUsername(request.teamName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String token = jwtService.generateToken(user);
@@ -66,8 +67,7 @@ public class AuthService {
     private AuthDtos.UserDto toUserDto(User user) {
         return new AuthDtos.UserDto(
                 user.getId(),
-                user.getEmail(),
-                user.getActualUsername(),
+                user.getUsername(),
                 user.getRole().name(),
                 user.getCreatedAt().toString()
         );

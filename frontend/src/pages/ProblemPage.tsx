@@ -113,6 +113,111 @@ export default function ProblemPage() {
     return () => { eventSourceRef.current?.close(); };
   }, [problemId, compId, inAttempt, isAdmin]);
 
+  const lastAlertTimeRef = useRef(0);
+  const showCopyPasteWarning = useCallback(() => {
+    const now = Date.now();
+    if (now - lastAlertTimeRef.current > 2500) {
+      lastAlertTimeRef.current = now;
+      alert('Copying and pasting is disabled during the competition.');
+    }
+  }, []);
+
+  // Disable copy/paste and right click for participants across the entire page
+  useEffect(() => {
+    if (isAdmin) return;
+
+    const handleCopyPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      showCopyPasteWarning();
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return false;
+    };
+
+    // Use capture phase (true) so events are intercepted BEFORE reaching any child elements or Monaco editor
+    window.addEventListener('copy', handleCopyPaste, true);
+    window.addEventListener('cut', handleCopyPaste, true);
+    window.addEventListener('paste', handleCopyPaste, true);
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('contextmenu', handleContextMenu, true);
+
+    return () => {
+      window.removeEventListener('copy', handleCopyPaste, true);
+      window.removeEventListener('cut', handleCopyPaste, true);
+      window.removeEventListener('paste', handleCopyPaste, true);
+      window.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('contextmenu', handleContextMenu, true);
+    };
+  }, [isAdmin, showCopyPasteWarning]);
+
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    if (isAdmin) return;
+
+    // 1. Intercept keyboard shortcuts for copy, paste, cut inside Monaco
+    editor.onKeyDown((e: any) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      const isPaste = (isCtrlOrCmd && (e.code === 'KeyV' || e.keyCode === monaco.KeyCode.KeyV)) ||
+                      (e.shiftKey && (e.code === 'Insert' || e.keyCode === monaco.KeyCode.Insert));
+      const isCopy = isCtrlOrCmd && (e.code === 'KeyC' || e.keyCode === monaco.KeyCode.KeyC);
+      const isCut = isCtrlOrCmd && (e.code === 'KeyX' || e.keyCode === monaco.KeyCode.KeyX);
+
+      if (isPaste || isCopy || isCut) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.browserEvent) {
+          e.browserEvent.preventDefault();
+          e.browserEvent.stopPropagation();
+          e.browserEvent.stopImmediatePropagation();
+        }
+        showCopyPasteWarning();
+      }
+    });
+
+    // 2. Attach capture-phase event listeners to Monaco's root DOM node
+    const domNode = editor.getDomNode();
+    if (domNode) {
+      const blockClipboard = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        showCopyPasteWarning();
+      };
+
+      const blockContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      };
+
+      domNode.addEventListener('copy', blockClipboard, true);
+      domNode.addEventListener('cut', blockClipboard, true);
+      domNode.addEventListener('paste', blockClipboard, true);
+      domNode.addEventListener('drop', blockClipboard, true);
+      domNode.addEventListener('contextmenu', blockContextMenu, true);
+    }
+
+    // 3. Override Monaco's internal clipboard actions
+    try {
+      const copyAction = editor.getAction('editor.action.clipboardCopyAction');
+      if (copyAction) copyAction.run = () => Promise.resolve();
+
+      const pasteAction = editor.getAction('editor.action.clipboardPasteAction');
+      if (pasteAction) pasteAction.run = () => Promise.resolve();
+
+      const cutAction = editor.getAction('editor.action.clipboardCutAction');
+      if (cutAction) cutAction.run = () => Promise.resolve();
+    } catch (err) {
+      console.error('Error overriding Monaco clipboard actions:', err);
+    }
+  };
+
   const saveDraft = useCallback(() => {
     localStorage.setItem(`code-draft-${problemId}`, code);
   }, [code, problemId]);
@@ -441,6 +546,7 @@ export default function ProblemPage() {
               language={language === 'JAVA' ? 'java' : 'c'}
               value={code}
               onChange={val => setCode(val || '')}
+              onMount={handleEditorDidMount}
               theme="vs-dark"
               options={{
                 fontSize: 14,
@@ -452,6 +558,8 @@ export default function ProblemPage() {
                 tabSize: 4,
                 wordWrap: 'on',
                 padding: { top: 8, bottom: 8 },
+                contextmenu: false,
+                dragAndDrop: false,
               }}
             />
           </div>
@@ -480,6 +588,11 @@ export default function ProblemPage() {
                 <textarea
                   value={customInput}
                   onChange={e => setCustomInput(e.target.value)}
+                  onCopy={!isAdmin ? (e) => { e.preventDefault(); showCopyPasteWarning(); } : undefined}
+                  onCut={!isAdmin ? (e) => { e.preventDefault(); showCopyPasteWarning(); } : undefined}
+                  onPaste={!isAdmin ? (e) => { e.preventDefault(); showCopyPasteWarning(); } : undefined}
+                  onContextMenu={!isAdmin ? (e) => { e.preventDefault(); } : undefined}
+                  onDrop={!isAdmin ? (e) => { e.preventDefault(); } : undefined}
                   className="w-full h-full p-3 bg-arena-bg text-arena-text font-mono text-xs
                              resize-none focus:outline-none border-0"
                   placeholder="Enter custom input here..."
