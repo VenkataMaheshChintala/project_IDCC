@@ -8,7 +8,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import {
   Play, Send, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, Cpu, AlertCircle,
-  ChevronLeft, Terminal, ChevronRight
+  ChevronLeft, Terminal, ChevronRight, X
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAttempt } from '../context/AttemptContext';
@@ -139,13 +139,25 @@ export default function ProblemPage() {
     return () => { eventSourceRef.current?.close(); };
   }, [problemId, compId, inAttempt, isAdmin]);
 
-  const lastAlertTimeRef = useRef(0);
+  const [copyPasteWarning, setCopyPasteWarning] = useState(false);
+  const copyPasteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const showCopyPasteWarning = useCallback(() => {
-    const now = Date.now();
-    if (now - lastAlertTimeRef.current > 2500) {
-      lastAlertTimeRef.current = now;
-      alert('Copying and pasting is disabled during the competition.');
+    setCopyPasteWarning(true);
+    if (copyPasteTimeoutRef.current) {
+      clearTimeout(copyPasteTimeoutRef.current);
     }
+    copyPasteTimeoutRef.current = setTimeout(() => {
+      setCopyPasteWarning(false);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copyPasteTimeoutRef.current) {
+        clearTimeout(copyPasteTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Disable copy/paste and right click for participants across the entire page
@@ -418,6 +430,29 @@ export default function ProblemPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
+      {/* Copy-Paste Warning Toast Popup */}
+      {copyPasteWarning && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[99999] animate-fade-in pointer-events-auto">
+          <div className="flex items-center gap-3 px-4 py-3 bg-arena-surface/95 border border-arena-red/50 text-arena-text rounded-xl shadow-2xl backdrop-blur-md">
+            <div className="w-8 h-8 rounded-lg bg-arena-red/20 border border-arena-red/30 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-4 h-4 text-arena-red" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-arena-text">Copy & Paste Disabled</p>
+              <p className="text-xs text-arena-text-dim">Copying and pasting is prohibited during the competition.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCopyPasteWarning(false)}
+              className="ml-2 text-arena-muted hover:text-arena-text p-1 rounded-lg hover:bg-white/5 transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top bar / Attempt Header */}
       {inAttempt && competition ? (
         <div className="flex items-center gap-4 px-4 py-3 border-b border-arena-border bg-arena-surface/80">
