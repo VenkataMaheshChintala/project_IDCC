@@ -95,6 +95,17 @@ public class SubmissionStore {
         );
     }
 
+    public int getProblemPoints(Long problemId) {
+        try {
+            Integer pts = jdbc.queryForObject(
+                    "SELECT points FROM problems WHERE id = ?",
+                    Integer.class, problemId);
+            return pts != null ? pts : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public Long getCompetitionIdForSubmission(Long submissionId) {
         try {
             return jdbc.queryForObject(

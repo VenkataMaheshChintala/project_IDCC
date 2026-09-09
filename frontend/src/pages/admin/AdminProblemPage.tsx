@@ -237,7 +237,6 @@ export default function AdminProblemPage() {
                         <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1}</span>
                         {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
                         {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
-                        <span className="text-xs text-arena-muted">{tc.points} pts</span>
                       </div>
                       <button onClick={() => handleDeleteTC(tc.id)}
                         className="text-arena-red/50 hover:text-arena-red transition-colors">
@@ -289,12 +288,6 @@ export default function AdminProblemPage() {
                     className="rounded" />
                   Hidden
                 </label>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-arena-muted">Points:</label>
-                  <input type="number" value={newTestCase.points} min={0}
-                    onChange={e => setNewTestCase(t => ({ ...t, points: Number(e.target.value) }))}
-                    className="input w-20 text-sm py-1" />
-                </div>
               </div>
               <button onClick={handleAddTestCase} disabled={addingTC || !newTestCase.input || !newTestCase.expectedOutput}
                 className="btn-primary flex items-center gap-2 text-sm">

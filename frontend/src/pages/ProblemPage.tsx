@@ -77,6 +77,32 @@ export default function ProblemPage() {
   const [activeTab, setActiveTab] = useState<'input' | 'output' | 'results'>('input');
   const [sampleInput, setSampleInput] = useState('');
   const [language, setLanguage] = useState<'JAVA' | 'C'>('JAVA');
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(208); // default h-52 is 208px
+  const isDraggingRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const startHeightRef = useRef(208);
+
+  const handleMouseDownOnResizer = (e: React.MouseEvent) => {
+    isDraggingRef.current = true;
+    dragStartYRef.current = e.clientY;
+    startHeightRef.current = bottomPanelHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const deltaY = dragStartYRef.current - moveEvent.clientY;
+      const newHeight = Math.max(100, Math.min(600, startHeightRef.current + deltaY));
+      setBottomPanelHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
   const eventSourceRef = useRef<EventSource | null>(null);
   const { inAttempt, endAttempt } = useAttempt();
   const { isAdmin } = useAuth();
@@ -564,8 +590,16 @@ export default function ProblemPage() {
             />
           </div>
 
-          {/* Bottom panel — input/output */}
-          <div className="h-52 border-t border-arena-border flex flex-col">
+          {/* Bottom panel — input/output with drag-resize handle */}
+          <div style={{ height: `${bottomPanelHeight}px` }} className="border-t border-arena-border flex flex-col relative select-none">
+            {/* Drag Handle */}
+            <div
+              onMouseDown={handleMouseDownOnResizer}
+              className="w-full h-2 cursor-row-resize hover:bg-arena-accent/40 active:bg-arena-accent transition-colors flex items-center justify-center -mt-1 z-10 group"
+            >
+              <div className="w-12 h-1 bg-arena-border group-hover:bg-arena-accent rounded-full transition-colors" />
+            </div>
+
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-arena-border">
               <button onClick={() => setActiveTab('input')}
                 className={`text-xs px-3 py-1 rounded transition-colors ${activeTab === 'input' ? 'bg-arena-accent text-white' : 'text-arena-muted hover:text-arena-text'}`}>

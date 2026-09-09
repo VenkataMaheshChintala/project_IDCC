@@ -147,8 +147,18 @@ public class JudgeEngine {
             return new JudgeResult(finalStatus, 0, maxScore, 0L);
         }
 
-        // If partial score but all passed, ACCEPTED; else use worst verdict
-        if (totalScore == maxScore) finalStatus = "ACCEPTED";
+        // Award points only if ALL test cases for the question are solved
+        int problemPoints = submissionStore.getProblemPoints(job.getProblemId());
+        maxScore = problemPoints;
+        if (passedTestCases == testCases.size() && testCases.size() > 0) {
+            finalStatus = "ACCEPTED";
+            totalScore = problemPoints;
+        } else {
+            totalScore = 0;
+            if ("ACCEPTED".equals(finalStatus)) {
+                finalStatus = "WRONG_ANSWER";
+            }
+        }
 
         log.info("[Judge] submission={} status={} score={}/{} passed={}/{} time={}ms",
                 job.getSubmissionId(), finalStatus, totalScore, maxScore, passedTestCases, testCases.size(), maxTime);
