@@ -9,6 +9,7 @@ import com.codearena.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class ProblemService {
     private final TestCaseRepository testCaseRepository;
     private final CompetitionService competitionService;
     private final SubmissionRepository submissionRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     // ─── Problems ─────────────────────────────────────────────────────────────
 
@@ -136,6 +138,10 @@ public class ProblemService {
     public void deleteTestCase(Long testCaseId) {
         TestCase tc = testCaseRepository.findById(testCaseId)
                 .orElseThrow(() -> new NotFoundException("Test case not found: " + testCaseId));
+                
+        // Delete referencing test results to avoid foreign key constraint violations
+        jdbcTemplate.update("DELETE FROM submission_test_results WHERE test_case_id = ?", testCaseId);
+        
         testCaseRepository.delete(tc);
     }
 

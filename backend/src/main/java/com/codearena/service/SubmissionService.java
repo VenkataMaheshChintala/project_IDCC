@@ -66,6 +66,10 @@ public class SubmissionService {
         validateIsParticipant(competition, user);
         checkRateLimit(user.getId(), competition.getId());
 
+        int maxScore = problem.getTestCases() != null 
+                ? problem.getTestCases().stream().mapToInt(tc -> tc.getPoints()).sum() 
+                : 0;
+
         // Create submission
         Submission submission = Submission.builder()
                 .user(user)
@@ -75,7 +79,7 @@ public class SubmissionService {
                 .sourceCode(req.sourceCode())
                 .status(Submission.Status.QUEUED)
                 .score(0)
-                .maxScore(problem.getPoints())
+                .maxScore(maxScore)
                 .passedTestCases(0)
                 .totalTestCases(problem.getTestCases() != null ? problem.getTestCases().size() : 0)
                 .build();

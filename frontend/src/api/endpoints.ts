@@ -19,6 +19,7 @@ export const competitionApi = {
   join: (id: number) => api.post(`/competitions/${id}/join`),
   startAttempt: (id: number) => api.post(`/competitions/${id}/start-attempt`),
   endAttempt: (id: number) => api.post(`/competitions/${id}/end-attempt`),
+  exportParticipants: (id: number) => api.get(`/competitions/${id}/participants/export`, { responseType: 'blob' }),
 };
 
 // ─── Problems ─────────────────────────────────────────────────────────────────

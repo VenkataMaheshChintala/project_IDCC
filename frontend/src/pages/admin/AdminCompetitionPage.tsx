@@ -152,6 +152,19 @@ export default function AdminCompetitionPage() {
     }
   };
 
+  const handleExportParticipantsExcel = async () => {
+    try {
+      const res = await competitionApi.exportParticipants(Number(id));
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `participants-${id}.xlsx`;
+      a.click();
+    } catch {
+      setError('Export participants failed');
+    }
+  };
+
   if (loading) return (
     <div className="flex justify-center py-16">
       <div className="w-8 h-8 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" />
@@ -174,6 +187,15 @@ export default function AdminCompetitionPage() {
           )}
         </h1>
         {competition && <StatusBadge status={competition.status} />}
+        
+        {!isNew && (
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={handleExportParticipantsExcel} className="btn-secondary flex items-center gap-2 text-sm py-1.5">
+              <Download className="w-4 h-4" />
+              Export Participants
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (

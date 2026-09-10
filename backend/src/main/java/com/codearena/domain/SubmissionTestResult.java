@@ -18,6 +18,7 @@ public class SubmissionTestResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "test_case_id", nullable = false)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     private TestCase testCase;
 
     @Enumerated(EnumType.STRING)

@@ -217,19 +217,13 @@ export default function AdminProblemPage() {
               className="input min-h-16 resize-y text-xs" placeholder="- 1 ≤ n ≤ 10⁵" />
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-arena-text-dim mb-1.5">Difficulty</label>
               <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value }))}
                 className="input">
                 {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm text-arena-text-dim mb-1.5">Points</label>
-              <input type="number" value={form.points} min={1}
-                onChange={e => setForm(f => ({ ...f, points: Number(e.target.value) }))}
-                className="input" />
             </div>
             <div>
               <label className="block text-sm text-arena-text-dim mb-1.5">Time Limit (ms)</label>
@@ -272,6 +266,7 @@ export default function AdminProblemPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1}</span>
+                        <span className="badge bg-arena-accent/10 text-arena-accent border border-arena-accent/20">{tc.points} pts</span>
                         {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
                         {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
                       </div>
@@ -312,14 +307,20 @@ export default function AdminProblemPage() {
                     className="input min-h-24 resize-y font-mono text-xs" placeholder="Expected output..." />
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer">
+              <div className="flex items-center gap-6">
+                <div>
+                  <label className="text-xs text-arena-muted mb-1 block">Points</label>
+                  <input type="number" value={newTestCase.points} min={0}
+                    onChange={e => setNewTestCase(t => ({ ...t, points: Number(e.target.value) }))}
+                    className="input py-1 px-2 text-xs w-24" />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-5">
                   <input type="checkbox" checked={newTestCase.sample}
                     onChange={e => setNewTestCase(t => ({ ...t, sample: e.target.checked }))}
                     className="rounded" />
                   Sample (visible to participants)
                 </label>
-                <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-5">
                   <input type="checkbox" checked={newTestCase.hidden}
                     onChange={e => setNewTestCase(t => ({ ...t, hidden: e.target.checked }))}
                     className="rounded" />

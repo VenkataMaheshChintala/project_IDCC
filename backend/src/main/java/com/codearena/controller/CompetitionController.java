@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.Resource;
 
 import java.util.List;
 
@@ -63,6 +64,12 @@ public class CompetitionController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         competitionService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/participants/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> exportParticipants(@PathVariable Long id) {
+        return competitionService.exportParticipantsExcel(id);
     }
 
     // ─── Participant actions ──────────────────────────────────────────────────

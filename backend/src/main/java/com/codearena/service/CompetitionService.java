@@ -13,6 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @Service
 @RequiredArgsConstructor
@@ -231,5 +243,77 @@ public class CompetitionService {
                 c.getStatus().name(),
                 c.getTimeLimitMinutes(), participantCount, joined, attemptCompleted, attemptStartedAt
         );
+    }
+    // ─── Export ───────────────────────────────────────────────────────────────
+
+    public ResponseEntity<Resource> exportParticipantsExcel(Long competitionId) {
+        Competition competition = findOrThrow(competitionId);
+        List<CompetitionParticipant> participants = participantRepository.findByCompetitionId(competitionId);
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Participants");
+
+            // Header
+            Row headerRow = sheet.createRow(0);
+            String[] columns = {"Status", "Team Name", "Student 1 Name", "Student 1 Roll No",
+                    "Student 2 Name", "Student 2 Roll No", "Phone Number",
+                    "Joined At", "Attempt Started At", "Attempt Ended At"};
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .withZone(ZoneId.systemDefault());
+
+            int rowIdx = 1;
+            for (CompetitionParticipant p : participants) {
+                Row row = sheet.createRow(rowIdx++);
+                User u = p.getUser();
+
+                String status = "REGISTERED";
+                if (p.getAttemptStartedAt() != null) {
+                    status = p.getAttemptEndedAt() != null ? "COMPLETED" : "IN_PROGRESS";
+                }
+
+                row.createCell(0).setCellValue(status);
+                row.createCell(1).setCellValue(u.getUsername());
+                row.createCell(2).setCellValue(u.getStudent1Name() != null ? u.getStudent1Name() : "");
+                row.createCell(3).setCellValue(u.getStudent1Rollno() != null ? u.getStudent1Rollno() : "");
+                row.createCell(4).setCellValue(u.getStudent2Name() != null ? u.getStudent2Name() : "");
+                row.createCell(5).setCellValue(u.getStudent2Rollno() != null ? u.getStudent2Rollno() : "");
+                row.createCell(6).setCellValue(u.getPhoneNumber() != null ? u.getPhoneNumber() : "");
+                
+                row.createCell(7).setCellValue(p.getJoinedAt() != null ? formatter.format(p.getJoinedAt()) : "");
+                row.createCell(8).setCellValue(p.getAttemptStartedAt() != null ? formatter.format(p.getAttemptStartedAt()) : "");
+                row.createCell(9).setCellValue(p.getAttemptEndedAt() != null ? formatter.format(p.getAttemptEndedAt()) : "");
+            }
+
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            ByteArrayResource resource = new ByteArrayResource(out.toByteArray());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=competition_" + competitionId + "_participants.xlsx");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentLength(resource.contentLength())
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(resource);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate Excel file", e);
+        }
     }
 }

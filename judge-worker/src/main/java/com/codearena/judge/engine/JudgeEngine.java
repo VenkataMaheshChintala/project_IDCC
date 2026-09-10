@@ -153,14 +153,12 @@ public class JudgeEngine {
             return new JudgeResult(finalStatus, 0, maxScore, 0L);
         }
 
-        // Award points only if ALL test cases for the question are solved
-        int problemPoints = submissionStore.getProblemPoints(job.getProblemId());
-        maxScore = problemPoints;
+        // Determine final status based on partial completion
         if (passedTestCases == testCases.size() && testCases.size() > 0) {
             finalStatus = "ACCEPTED";
-            totalScore = problemPoints;
+        } else if (passedTestCases > 0 && passedTestCases < testCases.size()) {
+            finalStatus = "PARTIAL";
         } else {
-            totalScore = 0;
             if ("ACCEPTED".equals(finalStatus)) {
                 finalStatus = "WRONG_ANSWER";
             }
