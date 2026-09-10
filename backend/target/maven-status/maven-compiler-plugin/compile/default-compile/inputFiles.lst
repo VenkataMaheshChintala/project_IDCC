@@ -8,6 +8,7 @@
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/controller/AdminController.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/service/CompetitionService.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/repository/ProblemRepository.java
+/Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/domain/TeamMember.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/domain/Problem.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/dto/AuthDtos.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/config/SecurityConfig.java
@@ -24,6 +25,7 @@
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/repository/CompetitionParticipantRepository.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/repository/SubmissionRepository.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/service/RunResultService.java
+/Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/repository/TeamMemberRepository.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/queue/JudgeJob.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/queue/SubmissionQueue.java
 /Users/maheshchintala/Desktop/IDCC/backend/src/main/java/com/codearena/exception/GlobalExceptionHandler.java
