@@ -338,7 +338,7 @@ export default function ProblemPage() {
     for (let i = 0; i < 900; i++) {
       await new Promise(r => setTimeout(r, 1000));
       try {
-        const res = await fetch(`/api/run-result/${runJobId}`, {
+        const res = await fetch(`/api/runs/${runJobId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         if (res.ok) {

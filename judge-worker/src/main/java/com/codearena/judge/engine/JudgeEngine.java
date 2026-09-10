@@ -137,6 +137,12 @@ public class JudgeEngine {
                         tc.id(), tcStatus, pointsEarned, execResult.getExecutionTimeMs(),
                         execResult.getMemoryUsedMb(), execResult.getStdout(), tc.orderIndex()
                 ));
+
+                // The scoring policy is all-or-nothing, so continuing after a hard timeout
+                // only delays the next participant without changing the submission score.
+                if (execResult.getVerdict() == ExecutionResult.Verdict.TIME_LIMIT_EXCEEDED) {
+                    break;
+                }
             }
 
         } catch (Exception e) {

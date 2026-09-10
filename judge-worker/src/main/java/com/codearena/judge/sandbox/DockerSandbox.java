@@ -30,8 +30,11 @@ public class DockerSandbox {
 
     private static final Logger log = LoggerFactory.getLogger(DockerSandbox.class);
 
-    @Value("${judge.docker-image:eclipse-temurin:21-jdk-alpine}")
+    @Value("${judge.docker-image:codearena-sandbox:latest}")
     private String dockerImage;
+
+    @Value("${judge.compile-timeout-ms:10000}")
+    private long compileTimeoutMs;
 
     @Value("${judge.cpu-limit:1.5}")
     private double cpuLimit;
@@ -64,19 +67,10 @@ public class DockerSandbox {
         dockerClient = DockerClientImpl.getInstance(config, httpClient);
         log.info("[Sandbox] Docker client initialized");
 
-        // Pull base image at startup
-        try {
-            dockerClient.pullImageCmd(dockerImage).start().awaitCompletion(60, TimeUnit.SECONDS);
-            log.info("[Sandbox] Base image ready: {}", dockerImage);
-        } catch (Exception e) {
-            log.warn("[Sandbox] Could not pre-pull base image: {}", e.getMessage());
-        }
-
-        // Build/verify custom sandbox image once at startup
         try {
             ensureCustomSandboxImage();
         } catch (Exception e) {
-            log.warn("[Sandbox] Could not pre-build custom sandbox image at startup: {}", e.getMessage());
+            throw new IllegalStateException("Required sandbox image is unavailable: " + dockerImage, e);
         }
     }
 
@@ -126,7 +120,7 @@ public class DockerSandbox {
             }
 
             try {
-                ExecResult compileResult = dockerExec(containerId, 30_000, compileCmd);
+                ExecResult compileResult = dockerExec(containerId, compileTimeoutMs, compileCmd);
                 long elapsed = System.currentTimeMillis() - compileStart;
 
                 if (compileResult.exitCode != 0) {
@@ -291,7 +285,8 @@ public class DockerSandbox {
                     .withSecurityOpts(List.of("no-new-privileges:true"))
                     .withAutoRemove(false);
 
-            String imageToUse = "codearena-sandbox:latest";
+            String imageToUse = dockerImage;
+            dockerClient.inspectImageCmd(imageToUse).exec();
 
             CreateContainerResponse container = dockerClient.createContainerCmd(imageToUse)
                     .withHostConfig(hostConfig)
@@ -363,6 +358,10 @@ public class DockerSandbox {
             timedOut = true;
         }
 
+        if (timedOut) {
+            // A timed-out exec keeps consuming host resources until its container stops.
+            try { dockerClient.killContainerCmd(containerId).exec(); } catch (Exception ignored) {}
+        }
         InspectExecResponse inspectExec = dockerClient.inspectExecCmd(execCreate.getId()).exec();
         int exitCode = timedOut ? -1 : (inspectExec.getExitCodeLong() != null ? inspectExec.getExitCodeLong().intValue() : -1);
 
@@ -381,7 +380,14 @@ public class DockerSandbox {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(true);
         Process proc = pb.start();
-        try { proc.waitFor(10, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            if (!proc.waitFor(10, TimeUnit.SECONDS) || proc.exitValue() != 0) {
+                throw new IOException("Failed to create workspace archive");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted creating workspace archive", e);
+        }
     }
 
     private void cleanup(String containerId, Path workDir) {
@@ -412,33 +418,12 @@ public class DockerSandbox {
 
     private synchronized void ensureCustomSandboxImage() {
         if (imageReady.get()) return;
-
-        String imageName = "codearena-sandbox:latest";
         try {
-            dockerClient.inspectImageCmd(imageName).exec();
-            log.info("[Sandbox] Image {} already exists.", imageName);
+            dockerClient.inspectImageCmd(dockerImage).exec();
+            log.info("[Sandbox] Verified immutable image {}", dockerImage);
             imageReady.set(true);
-        } catch (com.github.dockerjava.api.exception.NotFoundException e) {
-            log.info("[Sandbox] Image {} not found. Building it now from {}...", imageName, dockerImage);
-            try {
-                Path tempDir = Files.createTempDirectory("docker-build-");
-                Path df = tempDir.resolve("Dockerfile");
-                String dockerfile = "FROM " + dockerImage + "\n" +
-                                    "RUN apk add --no-cache gcc musl-dev libc-dev\n";
-                Files.writeString(df, dockerfile);
-
-                dockerClient.buildImageCmd(tempDir.toFile())
-                        .withTags(Set.of(imageName))
-                        .start()
-                        .awaitCompletion(5, TimeUnit.MINUTES);
-
-                log.info("[Sandbox] Custom sandbox image built successfully");
-                deleteDirectory(tempDir);
-                imageReady.set(true);
-            } catch (Exception ex) {
-                log.error("[Sandbox] Failed to build sandbox image: {}", ex.getMessage());
-                throw new RuntimeException("Could not build sandbox image", ex);
-            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Sandbox image " + dockerImage + " is not available", e);
         }
     }
 

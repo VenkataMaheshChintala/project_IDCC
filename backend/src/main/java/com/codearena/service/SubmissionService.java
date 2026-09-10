@@ -7,6 +7,8 @@ import com.codearena.exception.ForbiddenException;
 import com.codearena.exception.NotFoundException;
 import com.codearena.queue.JudgeJob;
 import com.codearena.queue.SubmissionQueue;
+import com.codearena.repository.JudgeOutboxRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codearena.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +36,21 @@ public class SubmissionService {
     private final CompetitionParticipantRepository participantRepository;
     private final SubmissionQueue queue;
     private final RunResultPoller runResultPoller;
+    private final RunResultService runResultService;
+    private final JudgeOutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.rate-limit.submissions-per-minute}")
     private int submissionsPerMinute;
+
+    @Value("${app.judge.max-source-bytes:65536}")
+    private int maxSourceBytes;
+
+    @Value("${app.judge.max-input-bytes:65536}")
+    private int maxInputBytes;
+
+    @Value("${app.judge.submission-stream:codearena:submissions:stream}")
+    private String submissionStream;
 
     // ─── Submit ───────────────────────────────────────────────────────────────
 
@@ -47,6 +61,7 @@ public class SubmissionService {
 
         // Server-side validation
         validateLanguage(req.language());
+        validateSourceSize(req.sourceCode());
         validateCompetitionAcceptsSubmissions(competition);
         validateIsParticipant(competition, user);
         checkRateLimit(user.getId(), competition.getId());
@@ -85,7 +100,10 @@ public class SubmissionService {
                 .jobType("SUBMIT")
                 .build();
 
-        queue.enqueueSubmission(job);
+        outboxRepository.save(JudgeOutbox.builder()
+                .streamName(submissionStream)
+                .payload(serialize(job))
+                .build());
 
         return toSummary(submission, problem);
     }
@@ -95,6 +113,10 @@ public class SubmissionService {
     public String enqueueRun(Long problemId, SubmissionDtos.RunRequest req, User user) {
         Problem problem = problemService.findOrThrow(problemId);
         validateLanguage(req.language());
+        validateSourceSize(req.sourceCode());
+        validateInputSize(req.input());
+        validateCompetitionAcceptsSubmissions(problem.getCompetition());
+        validateIsParticipant(problem.getCompetition(), user);
 
         String runnerCode = req.language().equalsIgnoreCase("C") ? problem.getCRunnerCode() : problem.getRunnerCode();
 
@@ -113,6 +135,8 @@ public class SubmissionService {
                 .runJobId(runJobId)
                 .build();
 
+        // Persist the visible QUEUED state before publishing, so SSE and polling cannot miss a fast result.
+        runResultService.create(runJobId, user.getId());
         queue.enqueueRun(job);
         runResultPoller.registerRun(runJobId, user.getId());
         return runJobId;
@@ -154,6 +178,26 @@ public class SubmissionService {
     private void validateLanguage(String lang) {
         if (!SUPPORTED_LANGUAGES.contains(lang.toUpperCase())) {
             throw new BadRequestException("Unsupported language: " + lang + ". Supported: " + SUPPORTED_LANGUAGES);
+        }
+    }
+
+    private void validateSourceSize(String sourceCode) {
+        if (sourceCode.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > maxSourceBytes) {
+            throw new BadRequestException("Source code exceeds the allowed size");
+        }
+    }
+
+    private void validateInputSize(String input) {
+        if (input.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > maxInputBytes) {
+            throw new BadRequestException("Custom input exceeds the allowed size");
+        }
+    }
+
+    private String serialize(JudgeJob job) {
+        try {
+            return objectMapper.writeValueAsString(job);
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to create judge job", e);
         }
     }
 

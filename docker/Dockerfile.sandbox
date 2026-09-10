@@ -1,0 +1,12 @@
+# Use the Debian Temurin image for the sandbox. The Alpine GCC package pulls
+# the full musl toolchain and can spend several minutes extracting on CI hosts.
+FROM eclipse-temurin:21-jdk-jammy
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Keep the compiler image small while providing the tools used by the judge.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace

@@ -23,7 +23,7 @@ COPY --from=builder /app/target/app.jar app.jar
 RUN apk add --no-cache tar
 
 # Pre-pull the sandbox image so it's cached in the host daemon
-ENV JUDGE_DOCKER_IMAGE=eclipse-temurin:21-jdk-alpine
+ENV JUDGE_DOCKER_IMAGE=codearena-sandbox:latest
 
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \

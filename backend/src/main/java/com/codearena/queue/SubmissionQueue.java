@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,31 +16,37 @@ public class SubmissionQueue {
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
-    @Value("${app.judge.submission-queue-key}")
-    private String submissionQueueKey;
+    @Value("${app.judge.submission-stream:codearena:submissions:stream}")
+    private String submissionStream;
 
-    @Value("${app.judge.run-queue-key}")
-    private String runQueueKey;
+    @Value("${app.judge.run-stream:codearena:runs:stream}")
+    private String runStream;
 
     public void enqueueSubmission(JudgeJob job) {
-        try {
-            String json = objectMapper.writeValueAsString(job);
-            redis.opsForList().leftPush(submissionQueueKey, json);
-            log.info("[Queue] Enqueued submission job submissionId={}", job.getSubmissionId());
-        } catch (Exception e) {
-            log.error("[Queue] Failed to enqueue submission {}: {}", job.getSubmissionId(), e.getMessage());
-            throw new RuntimeException("Failed to enqueue submission", e);
-        }
+        enqueue(submissionStream, serialize(job));
+        log.info("[Queue] Enqueued submission job submissionId={}", job.getSubmissionId());
     }
 
     public void enqueueRun(JudgeJob job) {
+        enqueue(runStream, serialize(job));
+        log.info("[Queue] Enqueued run job runJobId={}", job.getRunJobId());
+    }
+
+    public String serialize(JudgeJob job) {
         try {
-            String json = objectMapper.writeValueAsString(job);
-            redis.opsForList().leftPush(runQueueKey, json);
-            log.info("[Queue] Enqueued run job runJobId={}", job.getRunJobId());
+            return objectMapper.writeValueAsString(job);
         } catch (Exception e) {
-            log.error("[Queue] Failed to enqueue run {}: {}", job.getRunJobId(), e.getMessage());
-            throw new RuntimeException("Failed to enqueue run job", e);
+            throw new IllegalStateException("Failed to serialize judge job", e);
+        }
+    }
+
+    public void enqueue(String stream, String payload) {
+        try {
+            redis.opsForStream().add(StreamRecords.newRecord().ofMap(java.util.Map.of("payload", payload))
+                    .withStreamKey(stream));
+        } catch (Exception e) {
+            log.error("[Queue] Failed to enqueue to stream {}: {}", stream, e.getMessage());
+            throw new IllegalStateException("Failed to enqueue judge job", e);
         }
     }
 }

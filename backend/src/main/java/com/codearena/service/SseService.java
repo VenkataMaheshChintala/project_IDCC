@@ -8,6 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -22,19 +23,19 @@ public class SseService {
     private final ObjectMapper objectMapper;
 
     // userId → emitter
-    private final Map<Long, SseEmitter> submissionEmitters = new ConcurrentHashMap<>();
+    private final Map<Long, Set<SseEmitter>> submissionEmitters = new ConcurrentHashMap<>();
     // competitionId → list of emitters
     private final Map<Long, Map<Long, SseEmitter>> leaderboardEmitters = new ConcurrentHashMap<>();
     // runJobId → emitter
-    private final Map<String, SseEmitter> runEmitters = new ConcurrentHashMap<>();
+    private final Map<String, Set<SseEmitter>> runEmitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribeToSubmissions(Long userId) {
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L); // 5 min timeout
-        submissionEmitters.put(userId, emitter);
+        submissionEmitters.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(emitter);
 
-        emitter.onCompletion(() -> submissionEmitters.remove(userId));
-        emitter.onTimeout(() -> submissionEmitters.remove(userId));
-        emitter.onError(e -> submissionEmitters.remove(userId));
+        emitter.onCompletion(() -> removeSubmissionEmitter(userId, emitter));
+        emitter.onTimeout(() -> removeSubmissionEmitter(userId, emitter));
+        emitter.onError(e -> removeSubmissionEmitter(userId, emitter));
 
         // Send ping immediately
         sendPing(emitter);
@@ -55,20 +56,22 @@ public class SseService {
         return emitter;
     }
 
-    public SseEmitter subscribeToRun(String runJobId) {
+    public SseEmitter subscribeToRun(String runJobId, Map<String, Object> currentResult) {
         SseEmitter emitter = new SseEmitter(60 * 1000L); // 1 min timeout
-        runEmitters.put(runJobId, emitter);
-        emitter.onCompletion(() -> runEmitters.remove(runJobId));
-        emitter.onTimeout(() -> runEmitters.remove(runJobId));
-        emitter.onError(e -> runEmitters.remove(runJobId));
+        runEmitters.computeIfAbsent(runJobId, ignored -> ConcurrentHashMap.newKeySet()).add(emitter);
+        emitter.onCompletion(() -> removeRunEmitter(runJobId, emitter));
+        emitter.onTimeout(() -> removeRunEmitter(runJobId, emitter));
+        emitter.onError(e -> removeRunEmitter(runJobId, emitter));
+        if (!"QUEUED".equals(currentResult.get("status")) && !"RUNNING".equals(currentResult.get("status"))) {
+            send(emitter, "run-result", currentResult);
+            emitter.complete();
+        }
         return emitter;
     }
 
     public void sendSubmissionUpdate(Long userId, Object payload) {
-        SseEmitter emitter = submissionEmitters.get(userId);
-        if (emitter != null) {
-            send(emitter, "submission-update", payload);
-        }
+        Set<SseEmitter> emitters = submissionEmitters.get(userId);
+        if (emitters != null) emitters.forEach(emitter -> send(emitter, "submission-update", payload));
     }
 
     public void sendLeaderboardUpdate(Long competitionId, Object payload) {
@@ -79,11 +82,15 @@ public class SseService {
     }
 
     public void sendRunResult(String runJobId, Object payload) {
-        SseEmitter emitter = runEmitters.remove(runJobId);
-        if (emitter != null) {
+        Set<SseEmitter> emitters = runEmitters.remove(runJobId);
+        if (emitters != null) emitters.forEach(emitter -> {
             send(emitter, "run-result", payload);
             try { emitter.complete(); } catch (Exception ignored) {}
-        }
+        });
+    }
+
+    public Set<Long> subscribedSubmissionUsers() {
+        return Set.copyOf(submissionEmitters.keySet());
     }
 
     private void send(SseEmitter emitter, String eventName, Object payload) {
@@ -109,5 +116,19 @@ public class SseService {
         if (emitters != null) {
             emitters.remove(userId);
         }
+    }
+
+    private void removeSubmissionEmitter(Long userId, SseEmitter emitter) {
+        submissionEmitters.computeIfPresent(userId, (ignored, emitters) -> {
+            emitters.remove(emitter);
+            return emitters.isEmpty() ? null : emitters;
+        });
+    }
+
+    private void removeRunEmitter(String runJobId, SseEmitter emitter) {
+        runEmitters.computeIfPresent(runJobId, (ignored, emitters) -> {
+            emitters.remove(emitter);
+            return emitters.isEmpty() ? null : emitters;
+        });
     }
 }

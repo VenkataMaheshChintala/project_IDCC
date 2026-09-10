@@ -46,8 +46,13 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
   judge:
-    submission-queue-key: codearena:submissions:queue
-    run-queue-key: codearena:run:queue
+    submission-stream: ${JUDGE_SUBMISSION_STREAM:codearena:submissions:stream}
+    run-stream: ${JUDGE_RUN_STREAM:codearena:runs:stream}
+    outbox-poll-ms: ${JUDGE_OUTBOX_POLL_MS:250}
+    submission-status-poll-ms: ${JUDGE_SUBMISSION_STATUS_POLL_MS:1000}
+    run-result-ttl-seconds: ${JUDGE_RUN_RESULT_TTL_SECONDS:900}
+    max-source-bytes: ${JUDGE_MAX_SOURCE_BYTES:65536}
+    max-input-bytes: ${JUDGE_MAX_INPUT_BYTES:65536}
     cpu-limit: ${JUDGE_CPU_LIMIT:1.5}
     memory-limit-mb: ${JUDGE_MEMORY_LIMIT_MB:256}
     timeout-seconds: ${JUDGE_TIMEOUT_SECONDS:10}

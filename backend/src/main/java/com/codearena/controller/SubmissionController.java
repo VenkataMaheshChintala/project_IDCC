@@ -4,6 +4,7 @@ import com.codearena.domain.User;
 import com.codearena.dto.SubmissionDtos;
 import com.codearena.service.SseService;
 import com.codearena.service.SubmissionService;
+import com.codearena.service.RunResultService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -22,6 +23,7 @@ public class SubmissionController {
 
     private final SubmissionService submissionService;
     private final SseService sseService;
+    private final RunResultService runResultService;
 
     // ─── Submit code ──────────────────────────────────────────────────────────
 
@@ -50,7 +52,16 @@ public class SubmissionController {
     public SseEmitter subscribeToRun(
             @PathVariable String runJobId,
             @AuthenticationPrincipal User user) {
-        return sseService.subscribeToRun(runJobId);
+        return sseService.subscribeToRun(runJobId, runResultService.getForUser(runJobId, user.getId()));
+    }
+
+    @GetMapping("/runs/{runJobId}")
+    public ResponseEntity<Map<String, Object>> getRun(
+            @PathVariable String runJobId,
+            @AuthenticationPrincipal User user) {
+        Map<String, Object> result = new java.util.LinkedHashMap<>(runResultService.getForUser(runJobId, user.getId()));
+        result.remove("userId");
+        return ResponseEntity.ok(result);
     }
 
     // ─── SSE for submission updates ───────────────────────────────────────────

@@ -29,15 +29,21 @@ server:
   port: 8090
 
 judge:
-  submission-queue-key: "codearena:submissions:queue"
-  run-queue-key: "codearena:run:queue"
+  submission-stream: ${JUDGE_SUBMISSION_STREAM:codearena:submissions:stream}
+  run-stream: ${JUDGE_RUN_STREAM:codearena:runs:stream}
+  stream-group: ${JUDGE_STREAM_GROUP:codearena-judges}
+  worker-id: ${JUDGE_WORKER_ID:}
   run-result-prefix: "codearena:run:result:"
+  run-result-ttl-seconds: ${JUDGE_RUN_RESULT_TTL_SECONDS:900}
+  reclaim-idle-seconds: ${JUDGE_RECLAIM_IDLE_SECONDS:60}
   cpu-limit: ${JUDGE_CPU_LIMIT:1.5}
   memory-limit-mb: ${JUDGE_MEMORY_LIMIT_MB:256}
   timeout-seconds: ${JUDGE_TIMEOUT_SECONDS:10}
+  compile-timeout-ms: ${JUDGE_COMPILE_TIMEOUT_MS:10000}
   max-processes: ${JUDGE_MAX_PROCESSES:50}
-  docker-image: ${JUDGE_DOCKER_IMAGE:eclipse-temurin:21-jdk-alpine}
-  worker-threads: ${JUDGE_WORKER_THREADS:4}
+  docker-image: ${JUDGE_DOCKER_IMAGE:codearena-sandbox:latest}
+  submission-worker-threads: ${JUDGE_SUBMISSION_WORKER_THREADS:4}
+  run-worker-threads: ${JUDGE_RUN_WORKER_THREADS:2}
 
 logging:
   level:

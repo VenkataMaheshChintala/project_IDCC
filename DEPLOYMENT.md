@@ -1,5 +1,13 @@
 # CodeArena Deployment Guide
 
+## Judge workers
+
+The judge consumes Redis Streams using the `codearena-judges` consumer group. Run each
+production judge-worker replica on its own Docker host and configure its own
+`JUDGE_WORKER_ID`; the host must have the pinned `JUDGE_DOCKER_IMAGE` available before
+the worker starts. The backend outbox publishes committed submissions to the stream, so
+do not point a worker at the retired Redis list keys.
+
 This guide provides step-by-step instructions on how to deploy CodeArena on a server so that any computer connected to the same network can access it via the server's IP address.
 
 ## Prerequisites
@@ -45,7 +53,16 @@ Run the following command to build all the microservices and start the applicati
 ```bash
 docker compose up --build -d
 ```
-*Note: The first build will take a few minutes as it downloads the necessary base images and compiles the Java backend and React frontend.*
+The sandbox image includes both JDK 21 and GCC. Build it once before starting the
+stack so the compiler toolchain is cached and is not rebuilt for every worker
+restart:
+```bash
+docker compose build sandbox-image
+docker compose up -d
+```
+The sandbox uses the Debian-based Temurin image because installing GCC through
+the Alpine package manager can take an excessive amount of time on some Docker
+hosts.
 
 ### 4. Verify Services are Running
 Check that all containers started successfully:
