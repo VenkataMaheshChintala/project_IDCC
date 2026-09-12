@@ -8,7 +8,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import {
   Play, Send, RotateCcw, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, Cpu, AlertCircle,
-  ChevronLeft, Terminal, ChevronRight, X
+  ChevronLeft, Terminal, ChevronRight, X, List, CheckCircle, Circle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAttempt } from '../context/AttemptContext';
@@ -67,7 +67,15 @@ export default function ProblemPage() {
   const [competition, setCompetition] = useState<any>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const navigate = useNavigate();
-  const [code, setCode] = useState(DEFAULT_JAVA);
+  const [language, setLanguage] = useState<'JAVA' | 'C'>('JAVA');
+  const [codes, setCodes] = useState<Record<'JAVA' | 'C', string>>({
+    JAVA: DEFAULT_JAVA,
+    C: DEFAULT_C
+  });
+  const code = codes[language];
+  const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -76,8 +84,8 @@ export default function ProblemPage() {
   const [submission, setSubmission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'input' | 'output' | 'results'>('input');
   const [sampleInput, setSampleInput] = useState('');
-  const [language, setLanguage] = useState<'JAVA' | 'C'>('JAVA');
   const [bottomPanelHeight, setBottomPanelHeight] = useState(208); // default h-52 is 208px
+  const [timeUp, setTimeUp] = useState(false);
   const isDraggingRef = useRef(false);
   const dragStartYRef = useRef(0);
   const startHeightRef = useRef(208);
@@ -108,8 +116,8 @@ export default function ProblemPage() {
   const { isAdmin } = useAuth();
 
   useEffect(() => {
-    const saved = localStorage.getItem(`code-draft-${problemId}`);
-    if (saved) setCode(saved);
+    const savedJava = localStorage.getItem(`code-draft-${problemId}-JAVA`);
+    const savedC = localStorage.getItem(`code-draft-${problemId}-C`);
 
     Promise.all([
       problemApi.get(Number(problemId)),
@@ -125,9 +133,12 @@ export default function ProblemPage() {
       setProblem(p);
       setCompetition(c);
       setProblems(probs);
-      if (!saved && p.starterCode) {
-        setCode(p.starterCode);
-      }
+      
+      setCodes({
+        JAVA: savedJava || p.starterCode || DEFAULT_JAVA,
+        C: savedC || p.cStarterCode || DEFAULT_C
+      });
+      
       if (p.sampleTestCases?.length > 0) {
         setSampleInput(p.sampleTestCases[0].input);
         setCustomInput(p.sampleTestCases[0].input);
@@ -256,23 +267,27 @@ export default function ProblemPage() {
     }
   };
 
-  const saveDraft = useCallback(() => {
-    localStorage.setItem(`code-draft-${problemId}`, code);
-  }, [code, problemId]);
-
-  const resetCode = () => {
-    if (confirm('Reset code to default template?')) {
-      setCode(language === 'C' ? (problem?.cStarterCode || DEFAULT_C) : (problem?.starterCode || DEFAULT_JAVA));
-      localStorage.removeItem(`code-draft-${problemId}`);
+  useEffect(() => {
+    if (problemId) {
+      if (codes.JAVA !== undefined && codes.JAVA !== '') {
+        localStorage.setItem(`code-draft-${problemId}-JAVA`, codes.JAVA);
+      }
+      if (codes.C !== undefined && codes.C !== '') {
+        localStorage.setItem(`code-draft-${problemId}-C`, codes.C);
+      }
     }
+  }, [codes, problemId]);
+
+  const confirmResetCode = () => {
+    const defaultCode = language === 'C' ? (problem?.cStarterCode || DEFAULT_C) : (problem?.starterCode || DEFAULT_JAVA);
+    setCodes(prev => ({ ...prev, [language]: defaultCode }));
+    localStorage.removeItem(`code-draft-${problemId}-${language}`);
+    setShowResetConfirm(false);
   };
 
   const handleLanguageChange = (newLang: 'JAVA' | 'C') => {
     setLanguage(newLang);
-    // Only reset code if the current code is the default for the old language or empty
-    if (code === problem?.starterCode || code === problem?.cStarterCode || code === DEFAULT_JAVA || code === DEFAULT_C || code.trim() === '') {
-      setCode(newLang === 'C' ? (problem?.cStarterCode || DEFAULT_C) : (problem?.starterCode || DEFAULT_JAVA));
-    }
+    setShowLanguageDropdown(false);
   };
 
   const handleRun = async () => {
@@ -462,27 +477,56 @@ export default function ProblemPage() {
             <span className="font-mono text-sm font-bold text-arena-accent w-8 text-center
                              bg-arena-accent/10 rounded px-2 py-0.5">{problem.slug}</span>
             <h2 className="font-semibold text-arena-text-dim text-sm truncate">{problem.title}</h2>
-            {problems.length > 1 && (() => {
-               const currentIndex = problems.findIndex(p => p.id === problem.id);
-               const prevProb = currentIndex > 0 ? problems[currentIndex - 1] : null;
-               const nextProb = currentIndex < problems.length - 1 ? problems[currentIndex + 1] : null;
-               return (
-                 <div className="flex items-center gap-1 ml-4 bg-arena-bg rounded-md border border-arena-border p-0.5">
-                   <button onClick={() => prevProb && navigate(`/competitions/${compId}/problems/${prevProb.id}`)} 
-                           disabled={!prevProb}
-                           className="p-1 text-arena-muted hover:text-arena-text hover:bg-arena-surface rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                           title="Previous Problem">
-                     <ChevronLeft className="w-4 h-4" />
-                   </button>
-                   <button onClick={() => nextProb && navigate(`/competitions/${compId}/problems/${nextProb.id}`)} 
-                           disabled={!nextProb}
-                           className="p-1 text-arena-muted hover:text-arena-text hover:bg-arena-surface rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                           title="Next Problem">
-                     <ChevronRight className="w-4 h-4" />
-                   </button>
-                 </div>
-               );
-            })()}
+            {problems.length > 1 && (
+              <div className="relative ml-4">
+                <button 
+                  onClick={() => setShowQuestionDropdown(!showQuestionDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-arena-bg border border-arena-border rounded-md text-arena-text text-sm hover:bg-arena-surface transition-colors"
+                >
+                  <List className="w-4 h-4" />
+                  Questions List
+                  <ChevronDown className="w-4 h-4 text-arena-muted" />
+                </button>
+                {showQuestionDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowQuestionDropdown(false)} />
+                    <div className="absolute left-0 top-full mt-1 w-80 bg-arena-surface border border-arena-border rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="max-h-80 overflow-y-auto">
+                        {problems.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setShowQuestionDropdown(false);
+                              navigate(`/competitions/${compId}/problems/${p.id}`);
+                            }}
+                            className={`w-full text-left px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors ${p.id === problem.id ? 'bg-arena-accent/10' : ''}`}
+                          >
+                            <div className="flex flex-col gap-1 text-left">
+                              <span className="text-sm font-medium text-arena-text">
+                                <span className="text-arena-accent mr-1 font-mono">{p.slug}:</span>
+                                {p.title}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <StatusBadge status={p.difficulty} />
+                              </div>
+                            </div>
+                            <div className="ml-3 flex-shrink-0">
+                              {p.userStatus === 'SOLVED' ? (
+                                <span className="flex items-center text-arena-green" title="Solved"><CheckCircle className="w-4 h-4" /></span>
+                              ) : p.userStatus === 'ATTEMPTED' ? (
+                                <span className="flex items-center text-arena-yellow" title="Attempted"><Circle className="w-4 h-4" /></span>
+                              ) : (
+                                <span className="text-arena-muted font-bold" title="Unattempted">-</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <CompetitionTimer
@@ -491,9 +535,7 @@ export default function ProblemPage() {
               attemptStartedAt={competition.attemptStartedAt}
               timeLimitMinutes={competition.timeLimitMinutes}
               onExpire={() => {
-                alert('Time is up! Your attempt has ended.');
-                endAttempt();
-                navigate('/competitions');
+                setTimeUp(true);
               }}
             />
             <button onClick={() => {
@@ -579,24 +621,42 @@ export default function ProblemPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Editor toolbar */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-arena-border bg-arena-surface/30">
-            <div className="flex items-center gap-2">
-              <select
-                value={language}
-                onChange={e => handleLanguageChange(e.target.value as 'JAVA' | 'C')}
-                className="text-xs px-2 py-1 rounded bg-arena-bg border border-arena-border text-arena-text-dim font-mono focus:outline-none"
+            <div className="flex items-center gap-2 relative">
+              <button
+                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                className="flex items-center justify-between gap-2 w-28 text-xs px-2 py-1 rounded bg-arena-bg border border-arena-border text-arena-text-dim font-mono focus:outline-none hover:bg-arena-surface transition-colors"
               >
-                <option value="JAVA">Java 21</option>
-                <option value="C">C (gcc)</option>
-              </select>
+                {language === 'JAVA' ? 'Java 21' : 'C (gcc)'}
+                <ChevronDown className="w-3 h-3 text-arena-muted" />
+              </button>
+              {showLanguageDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowLanguageDropdown(false)} />
+                  <div className="absolute left-0 top-full mt-1 w-28 bg-arena-surface border border-arena-border rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button onClick={() => handleLanguageChange('JAVA')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'JAVA' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>Java 21</button>
+                    <button onClick={() => handleLanguageChange('C')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'C' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>C (gcc)</button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={saveDraft} className="text-xs text-arena-muted hover:text-arena-text transition-colors px-2 py-1">
-                Save Draft
-              </button>
-              <button onClick={resetCode} className="flex items-center gap-1 text-xs text-arena-muted hover:text-arena-text transition-colors px-2 py-1">
-                <RotateCcw className="w-3 h-3" />
-                Reset
-              </button>
+            <div className="flex items-center gap-2 relative">
+              <span className="text-xs text-arena-muted flex items-center gap-1.5 px-2 py-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-arena-green/70" />
+                Saved automatically
+              </span>
+              {showResetConfirm ? (
+                <div className="flex items-center gap-1 bg-arena-red/10 border border-arena-red/20 rounded px-2 py-0.5">
+                  <span className="text-xs text-arena-red font-medium mr-1">Reset code?</span>
+                  <button onClick={confirmResetCode} className="text-xs text-arena-red font-bold hover:underline">Yes</button>
+                  <span className="text-arena-red/50">|</span>
+                  <button onClick={() => setShowResetConfirm(false)} className="text-xs text-arena-text-dim hover:text-arena-text">No</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowResetConfirm(true)} className="flex items-center gap-1 text-xs text-arena-muted hover:text-arena-text transition-colors px-2 py-1">
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -606,7 +666,7 @@ export default function ProblemPage() {
               height="100%"
               language={language === 'JAVA' ? 'java' : 'c'}
               value={code}
-              onChange={val => setCode(val || '')}
+              onChange={val => setCodes(prev => ({ ...prev, [language]: val || '' }))}
               onMount={handleEditorDidMount}
               theme="vs-dark"
               options={{
@@ -798,6 +858,27 @@ export default function ProblemPage() {
           </div>
         </div>
       </div>
+
+      {timeUp && (
+        <div className="fixed inset-0 z-[9999] bg-arena-bg/95 backdrop-blur flex items-center justify-center">
+          <div className="bg-arena-surface border border-arena-border p-8 rounded-xl max-w-sm w-full text-center shadow-2xl animate-scale-up">
+            <Clock className="w-16 h-16 text-arena-red mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-arena-text mb-3">Time's Up!</h2>
+            <p className="text-arena-text-dim mb-6">
+              Your competition attempt has ended.
+            </p>
+            <button 
+              onClick={() => {
+                endAttempt();
+                navigate('/competitions');
+              }}
+              className="btn-primary w-full"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

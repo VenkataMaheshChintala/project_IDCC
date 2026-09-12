@@ -50,6 +50,7 @@ export default function CompetitionPage() {
   
   const [showRules, setShowRules] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
 
   const compId = Number(id);
 
@@ -136,9 +137,7 @@ export default function CompetitionPage() {
                 attemptStartedAt={competition.attemptStartedAt}
                 timeLimitMinutes={competition.timeLimitMinutes}
                 onExpire={() => {
-                  alert('Time is up! Your attempt has ended.');
-                  endAttempt();
-                  navigate('/competitions');
+                  setTimeUp(true);
                 }}
               />
             )}
@@ -197,6 +196,27 @@ export default function CompetitionPage() {
           onClose={() => setShowRules(false)}
           starting={starting}
         />
+      )}
+
+      {timeUp && (
+        <div className="fixed inset-0 z-[9999] bg-arena-bg/95 backdrop-blur flex items-center justify-center">
+          <div className="bg-arena-surface border border-arena-border p-8 rounded-xl max-w-sm w-full text-center shadow-2xl animate-scale-up">
+            <Clock className="w-16 h-16 text-arena-red mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-arena-text mb-3">Time's Up!</h2>
+            <p className="text-arena-text-dim mb-6">
+              Your competition attempt has ended.
+            </p>
+            <button 
+              onClick={() => {
+                endAttempt();
+                navigate('/competitions');
+              }}
+              className="btn-primary w-full"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Main content area */}

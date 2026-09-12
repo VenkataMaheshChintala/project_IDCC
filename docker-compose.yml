@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: codearena-postgres
+    command: postgres -c shared_buffers=1GB -c work_mem=16MB
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME:-codearena}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
