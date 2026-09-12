@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { competitionApi } from '../api/endpoints';
 import { StatusBadge } from '../components/StatusBadge';
-import { Trophy, Users, Clock, ChevronRight, Plus, Calendar } from 'lucide-react';
+import { SystemGuideModal } from '../components/SystemGuideModal';
+import { Trophy, Users, Clock, ChevronRight, Plus, Calendar, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface Competition {
@@ -19,10 +20,20 @@ export default function CompetitionsPage() {
   const { isAdmin } = useAuth();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('hasSeenGuide');
+    if (!hasSeenGuide) {
+      setShowGuide(true);
+    }
     competitionApi.list().then(setCompetitions).finally(() => setLoading(false));
   }, []);
+
+  const handleCloseGuide = () => {
+    localStorage.setItem('hasSeenGuide', 'true');
+    setShowGuide(false);
+  };
 
   const formatDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -51,13 +62,21 @@ export default function CompetitionsPage() {
             {competitions.length} competition{competitions.length !== 1 ? 's' : ''} available
           </p>
         </div>
-        {isAdmin && (
-          <Link to="/admin/competitions/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Competition
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowGuide(true)} className="btn-secondary flex items-center gap-2 text-sm py-1.5 border-arena-blue/30 text-arena-blue hover:bg-arena-blue/10">
+            <BookOpen className="w-4 h-4" />
+            System Guide
+          </button>
+          {isAdmin && (
+            <Link to="/admin/competitions/new" className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              New Competition
+            </Link>
+          )}
+        </div>
       </div>
+
+      {showGuide && <SystemGuideModal onClose={handleCloseGuide} />}
 
       {competitions.length === 0 ? (
         <div className="card text-center py-16">

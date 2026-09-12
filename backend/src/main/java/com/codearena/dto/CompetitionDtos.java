@@ -12,14 +12,14 @@ public class CompetitionDtos {
     public record CreateRequest(
             @NotBlank String name,
             String description,
-            String rules,
+            @NotBlank(message = "Rules cannot be left blank. Please specify the competition rules.") String rules,
             Integer timeLimitMinutes
     ) {}
 
     public record UpdateRequest(
             String name,
             String description,
-            String rules,
+            @NotBlank(message = "Rules cannot be left blank. Please specify the competition rules.") String rules,
             Integer timeLimitMinutes,
             Competition.Status status
     ) {}

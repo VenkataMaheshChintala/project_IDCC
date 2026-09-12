@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { competitionApi, problemApi } from '../api/endpoints';
 import { CompetitionTimer } from '../components/CompetitionTimer';
 import { StatusBadge } from '../components/StatusBadge';
+import { CompetitionRulesModal } from '../components/CompetitionRulesModal';
 import { useAuth } from '../context/AuthContext';
 import { useAttempt } from '../context/AttemptContext';
 import {
@@ -46,6 +47,9 @@ export default function CompetitionPage() {
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'problems' | 'leaderboard'>('problems');
+  
+  const [showRules, setShowRules] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const compId = Number(id);
 
@@ -73,6 +77,18 @@ export default function CompetitionPage() {
       setError(err.response?.data?.message || 'Failed to join');
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleStartAttempt = async () => {
+    setStarting(true);
+    try {
+      await startAttempt(Number(compId));
+      setShowRules(false);
+    } catch (err: any) {
+      setError('Failed to start attempt');
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -143,7 +159,7 @@ export default function CompetitionPage() {
                   </button>
                 )}
                 {joined && canSubmit && !inAttempt && (
-                  <button onClick={() => startAttempt(Number(compId))} className="btn-primary flex items-center gap-2">
+                  <button onClick={() => setShowRules(true)} className="btn-primary flex items-center gap-2">
                     <Trophy className="w-4 h-4" />
                     Start Attempt
                   </button>
@@ -170,6 +186,18 @@ export default function CompetitionPage() {
         </div>
         {error && <p className="text-arena-red text-sm mt-3">{error}</p>}
       </div>
+
+      {/* Rules Modal */}
+      {showRules && competition && (
+        <CompetitionRulesModal
+          competitionName={competition.name}
+          rules={competition.rules}
+          timeLimitMinutes={competition.timeLimitMinutes}
+          onAgree={handleStartAttempt}
+          onClose={() => setShowRules(false)}
+          starting={starting}
+        />
+      )}
 
       {/* Main content area */}
       {competition.attemptCompleted ? (
@@ -199,7 +227,7 @@ export default function CompetitionPage() {
               {joining ? 'Joining...' : 'Join Competition'}
             </button>
           ) : (
-            <button onClick={() => startAttempt(Number(compId))} className="btn-primary text-lg px-8 py-3">
+            <button onClick={() => setShowRules(true)} className="btn-primary text-lg px-8 py-3">
               Start Attempt in Fullscreen
             </button>
           )}
