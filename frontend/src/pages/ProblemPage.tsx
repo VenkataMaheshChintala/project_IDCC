@@ -14,6 +14,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAttempt } from '../context/AttemptContext';
 import { useAuth } from '../context/AuthContext';
 import { CompetitionTimer } from '../components/CompetitionTimer';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const DEFAULT_JAVA = `import java.io.*;
 import java.util.*;
@@ -86,6 +87,7 @@ export default function ProblemPage() {
   const [sampleInput, setSampleInput] = useState('');
   const [bottomPanelHeight, setBottomPanelHeight] = useState(208); // default h-52 is 208px
   const [timeUp, setTimeUp] = useState(false);
+  const [showEndAttemptModal, setShowEndAttemptModal] = useState(false);
   const isDraggingRef = useRef(false);
   const dragStartYRef = useRef(0);
   const startHeightRef = useRef(208);
@@ -477,7 +479,7 @@ export default function ProblemPage() {
             <span className="font-mono text-sm font-bold text-arena-accent w-8 text-center
                              bg-arena-accent/10 rounded px-2 py-0.5">{problem.slug}</span>
             <h2 className="font-semibold text-arena-text-dim text-sm truncate">{problem.title}</h2>
-            {problems.length > 1 && (
+            {problems && problems.length > 0 && (
               <div className="relative ml-4">
                 <button 
                   onClick={() => setShowQuestionDropdown(!showQuestionDropdown)}
@@ -538,11 +540,7 @@ export default function ProblemPage() {
                 setTimeUp(true);
               }}
             />
-            <button onClick={() => {
-              if (confirm('Are you sure you want to end your attempt early? You cannot resume later.')) {
-                endAttempt();
-              }
-            }} className="btn-secondary text-sm py-1.5 border-arena-red/50 text-arena-red hover:bg-arena-red/10">
+            <button onClick={() => setShowEndAttemptModal(true)} className="btn-secondary text-sm py-1.5 border-arena-red/50 text-arena-red hover:bg-arena-red/10">
               End Competition
             </button>
           </div>
@@ -879,6 +877,20 @@ export default function ProblemPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showEndAttemptModal}
+        title="End Competition Early?"
+        message="Are you sure you want to end your attempt early? You cannot resume later."
+        confirmText="End Attempt"
+        cancelText="Continue Contest"
+        variant="danger"
+        onConfirm={() => {
+          setShowEndAttemptModal(false);
+          endAttempt();
+        }}
+        onClose={() => setShowEndAttemptModal(false)}
+      />
     </div>
   );
 }

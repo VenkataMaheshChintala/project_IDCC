@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { problemApi, competitionApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, GripVertical } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,6 +32,8 @@ export default function AdminProblemPage() {
   });
   const [addingTC, setAddingTC] = useState(false);
   const [descTab, setDescTab] = useState<'write' | 'preview'>('write');
+  const [showDeleteProblemModal, setShowDeleteProblemModal] = useState(false);
+  const [deleteTcId, setDeleteTcId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isNew) {
@@ -49,13 +52,15 @@ export default function AdminProblemPage() {
           timeLimitMs: p.timeLimitMs || 2000,
           memoryLimitMb: p.memoryLimitMb || 256
         });
-      }).finally(() => setLoading(false));
+      }).catch(() => setError('Failed to load problem'))
+        .finally(() => setLoading(false));
     }
   }, [problemId, isNew]);
 
   const handleSave = async () => {
     setSaving(true);
     setError('');
+    setSuccess('');
     try {
       if (isNew) {
         if (!compId) { setError('Missing competitionId'); return; }
@@ -63,7 +68,7 @@ export default function AdminProblemPage() {
         navigate(`/admin/problems/${created.id}`);
       } else {
         await problemApi.update(Number(problemId), form);
-        setSuccess('Saved!');
+        setSuccess('Problem saved successfully');
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err: any) {
@@ -81,7 +86,6 @@ export default function AdminProblemPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this problem? This removes all its test cases and submissions.')) return;
     try {
       await problemApi.delete(Number(problemId));
       navigate(-1);
@@ -109,7 +113,6 @@ export default function AdminProblemPage() {
   };
 
   const handleDeleteTC = async (tcId: number) => {
-    if (!confirm('Delete this test case?')) return;
     try {
       await problemApi.deleteTestCase(tcId);
       setTestCases(prev => prev.filter(tc => tc.id !== tcId));
@@ -245,7 +248,7 @@ export default function AdminProblemPage() {
               {saving ? 'Saving...' : isNew ? 'Create Problem' : 'Save'}
             </button>
             {!isNew && (
-              <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
+              <button onClick={() => setShowDeleteProblemModal(true)} className="btn-danger flex items-center gap-2">
                 <Trash2 className="w-4 h-4" />
                 Delete Problem
               </button>
@@ -270,7 +273,7 @@ export default function AdminProblemPage() {
                         {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
                         {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
                       </div>
-                      <button onClick={() => handleDeleteTC(tc.id)}
+                      <button onClick={() => setDeleteTcId(tc.id)}
                         className="text-arena-red/50 hover:text-arena-red transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -336,6 +339,36 @@ export default function AdminProblemPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteProblemModal}
+        title="Delete Problem?"
+        message="Are you sure you want to delete this problem? This removes all its test cases and submissions. This action cannot be undone."
+        confirmText="Delete Problem"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          setShowDeleteProblemModal(false);
+          handleDelete();
+        }}
+        onClose={() => setShowDeleteProblemModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTcId !== null}
+        title="Delete Test Case?"
+        message="Are you sure you want to delete this test case? This cannot be undone."
+        confirmText="Delete Test Case"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          if (deleteTcId !== null) {
+            handleDeleteTC(deleteTcId);
+            setDeleteTcId(null);
+          }
+        }}
+        onClose={() => setDeleteTcId(null)}
+      />
     </div>
   );
 }

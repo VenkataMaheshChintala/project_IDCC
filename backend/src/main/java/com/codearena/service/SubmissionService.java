@@ -148,6 +148,7 @@ public class SubmissionService {
 
     // ─── Read ─────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public SubmissionDtos.SubmissionResponse getById(Long submissionId, User requestor) {
         Submission s = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new NotFoundException("Submission not found"));
@@ -162,6 +163,7 @@ public class SubmissionService {
         return toResponse(s, isAdmin);
     }
 
+    @Transactional(readOnly = true)
     public List<SubmissionDtos.SubmissionSummary> getMySubmissions(User user) {
         return submissionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(0, 50))
                 .getContent()
@@ -170,6 +172,7 @@ public class SubmissionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public Page<SubmissionDtos.SubmissionSummary> adminList(
             Long competitionId, Long problemId, Long userId, Submission.Status status, int page) {
         return submissionRepository.findByFilters(competitionId, problemId, userId, status,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { Maximize, AlertTriangle } from 'lucide-react';
+import { Maximize, AlertTriangle, AlertCircle } from 'lucide-react';
 import { competitionApi } from '../api/endpoints';
 
 interface AttemptContextType {
@@ -24,6 +24,8 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     return saved ? Number(saved) : 0;
   });
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [terminationMessage, setTerminationMessage] = useState<string | null>(null);
+  const [attemptError, setAttemptError] = useState<string | null>(null);
 
   const lastViolationTimeRef = useRef(0);
 
@@ -40,8 +42,8 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
         const newCount = prev + 1;
         sessionStorage.setItem('fullscreen_violations', String(newCount));
         if (newCount >= 3) {
-          alert('You have exited fullscreen or lost focus 3 times. Your competition attempt has been ended.');
-          endAttempt();
+          setShowWarning(false);
+          setTerminationMessage('You have exited fullscreen or lost focus 3 times. Your competition attempt has been ended.');
         } else {
           setCountdown(10);
           setShowWarning(true);
@@ -114,8 +116,8 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
         if (prev === null) return null;
         if (prev <= 1) {
           clearInterval(timer);
-          alert('You failed to return to fullscreen in time. Your competition attempt has been ended.');
-          endAttempt();
+          setShowWarning(false);
+          setTerminationMessage('You failed to return to fullscreen in time. Your competition attempt has been ended.');
           return 0;
         }
         return prev - 1;
@@ -138,9 +140,10 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem('in_attempt', 'true');
       sessionStorage.setItem('attempt_comp_id', String(compId));
       setShowWarning(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error attempting to start attempt:", err);
-      alert("Unable to start attempt. Please try again.");
+      const msg = err?.response?.data?.message || "Unable to start attempt. Please try again.";
+      setAttemptError(msg);
     }
   };
 
@@ -220,6 +223,49 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
                 End Competition Attempt
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attempt Terminated Modal (Replaces native alert) */}
+      {terminationMessage && (
+        <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-arena-surface border border-arena-red/40 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-scale-up">
+            <div className="w-16 h-16 rounded-full bg-arena-red/10 border border-arena-red/30 flex items-center justify-center mx-auto mb-5 text-arena-red">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-arena-text mb-2">Attempt Ended</h2>
+            <p className="text-arena-text-dim text-sm mb-6 leading-relaxed">
+              {terminationMessage}
+            </p>
+            <button
+              onClick={async () => {
+                setTerminationMessage(null);
+                await endAttempt();
+              }}
+              className="btn-primary w-full py-3 text-base font-semibold"
+            >
+              Exit Competition
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Attempt Start Error Modal (Replaces native alert) */}
+      {attemptError && (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-arena-surface border border-arena-border p-6 rounded-xl max-w-md w-full text-center shadow-2xl animate-scale-up">
+            <div className="w-12 h-12 rounded-full bg-arena-red/10 border border-arena-red/20 flex items-center justify-center mx-auto mb-4 text-arena-red">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-arena-text mb-2">Failed to Start Attempt</h3>
+            <p className="text-sm text-arena-text-dim mb-6">{attemptError}</p>
+            <button
+              onClick={() => setAttemptError(null)}
+              className="btn-secondary w-full py-2.5"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}

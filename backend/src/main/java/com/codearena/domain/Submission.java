@@ -79,6 +79,7 @@ public class Submission {
     public enum Status {
         QUEUED,
         RUNNING,
+        PARTIAL,
         ACCEPTED,
         WRONG_ANSWER,
         COMPILATION_ERROR,

@@ -15,6 +15,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   // Submission
   QUEUED:               { label: 'Queued',           className: 'badge bg-gray-500/20 text-gray-400 border border-gray-500/30' },
   RUNNING:              { label: 'Judging...',        className: 'badge bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+  PARTIAL:              { label: 'Partial',           className: 'badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
   ACCEPTED:             { label: 'Accepted',          className: 'badge bg-green-500/20 text-green-400 border border-green-500/30' },
   WRONG_ANSWER:         { label: 'Wrong Answer',      className: 'badge bg-red-500/20 text-red-400 border border-red-500/30' },
   COMPILATION_ERROR:    { label: 'Compile Error',     className: 'badge bg-orange-500/20 text-orange-400 border border-orange-500/30' },

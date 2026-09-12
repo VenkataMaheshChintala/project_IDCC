@@ -44,6 +44,7 @@ export const submissionApi = {
     api.post(`/problems/${problemId}/run`, data).then(r => r.data),
   mySubmissions: () => api.get('/submissions').then(r => r.data),
   get: (id: number) => api.get(`/submissions/${id}`).then(r => r.data),
+  getRunResult: (runJobId: string) => api.get(`/runs/${runJobId}`).then(r => r.data),
 };
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────

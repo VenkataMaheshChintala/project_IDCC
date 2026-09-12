@@ -63,8 +63,13 @@ public class SseService {
         emitter.onTimeout(() -> removeRunEmitter(runJobId, emitter));
         emitter.onError(e -> removeRunEmitter(runJobId, emitter));
         if (!"QUEUED".equals(currentResult.get("status")) && !"RUNNING".equals(currentResult.get("status"))) {
-            send(emitter, "run-result", currentResult);
-            emitter.complete();
+            // Already finished! Send immediately but async to allow Spring MVC to initialize the emitter
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                send(emitter, "run-result", currentResult);
+                emitter.complete();
+            });
+            return emitter;
         }
         return emitter;
     }

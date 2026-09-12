@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { competitionApi, problemApi, leaderboardApi, adminApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import {
   Plus, Save, Trash2, Download, ChevronLeft,
   ExternalLink, Calendar, FileText, Settings, Info, Award
@@ -38,6 +39,7 @@ export default function AdminCompetitionPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [tab, setTab] = useState('problems');
+  const [showDeleteCompModal, setShowDeleteCompModal] = useState(false);
 
   useEffect(() => {
     if (!isNew) {
@@ -117,7 +119,6 @@ export default function AdminCompetitionPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this competition? This cannot be undone.')) return;
     try {
       await competitionApi.delete(Number(id));
       navigate('/admin/competitions');
@@ -285,7 +286,7 @@ export default function AdminCompetitionPage() {
                 {saving ? 'Saving...' : isNew ? 'Create Competition' : 'Save Changes'}
               </button>
               {!isNew && (
-                <button type="button" onClick={handleDelete} disabled={saving} className="btn-danger flex items-center gap-2 py-2.5 px-5">
+                <button type="button" onClick={() => setShowDeleteCompModal(true)} disabled={saving} className="btn-danger flex items-center gap-2 py-2.5 px-5">
                   <Trash2 className="w-4 h-4" />
                   <span className="hidden sm:inline">Delete</span>
                 </button>
@@ -473,6 +474,20 @@ export default function AdminCompetitionPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteCompModal}
+        title="Delete Competition?"
+        message="Are you sure you want to delete this competition? This action cannot be undone and will remove associated records."
+        confirmText="Delete Competition"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          setShowDeleteCompModal(false);
+          handleDelete();
+        }}
+        onClose={() => setShowDeleteCompModal(false)}
+      />
     </div>
   );
 }

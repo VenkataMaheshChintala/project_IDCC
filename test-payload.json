@@ -1,0 +1,5 @@
+{
+  "language": "C",
+  "sourceCode": "int main() { printf(\"Hello, World!\"); return 0; }",
+  "input": "1 2"
+}
