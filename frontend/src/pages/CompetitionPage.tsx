@@ -136,7 +136,7 @@ export default function CompetitionPage() {
                 status={competition.status}
                 attemptStartedAt={competition.attemptStartedAt}
                 timeLimitMinutes={competition.timeLimitMinutes}
-                onExpire={() => {
+                onExpire={competition.attemptCompleted ? undefined : () => {
                   setTimeUp(true);
                 }}
               />
@@ -209,7 +209,6 @@ export default function CompetitionPage() {
             <button 
               onClick={() => {
                 endAttempt();
-                navigate('/competitions');
               }}
               className="btn-primary w-full"
             >

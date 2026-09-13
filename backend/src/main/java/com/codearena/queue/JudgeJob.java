@@ -23,6 +23,7 @@ public class JudgeJob {
     private int timeLimitMs;
     private int memoryLimitMb;
     private String jobType;   // "SUBMIT" or "RUN"
+    private Boolean runSamples;
     private String runInput;  // only for RUN jobs
     private String runJobId;  // correlation id for SSE response on RUN
 }

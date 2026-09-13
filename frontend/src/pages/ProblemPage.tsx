@@ -292,7 +292,7 @@ export default function ProblemPage() {
     setShowLanguageDropdown(false);
   };
 
-  const handleRun = async () => {
+  const handleRun = async (runSamples: boolean = false) => {
     if (!problem) return;
     setRunning(true);
     setRunResult(null);
@@ -302,7 +302,8 @@ export default function ProblemPage() {
       const { runJobId } = await submissionApi.run(Number(problemId), {
         language: language,
         sourceCode: code,
-        input: customInput
+        input: runSamples ? "" : customInput,
+        runSamples: runSamples
       });
 
       // Poll for result via SSE or fallback polling
@@ -312,7 +313,7 @@ export default function ProblemPage() {
 
       es.addEventListener('run-result', (evt) => {
         const data = JSON.parse(evt.data);
-        if (data.status === 'ACCEPTED' && problem) {
+        if (data.type !== 'SAMPLES' && data.status === 'ACCEPTED' && problem) {
           const sample = problem.sampleTestCases.find((tc: any) => tc.input.trim() === customInput.trim());
           if (sample) {
             if (data.stdout.trim() === sample.expectedOutput.trim()) {
@@ -360,8 +361,8 @@ export default function ProblemPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.status) {
-            if (data.status === 'ACCEPTED' && problem) {
+          if (data.status || data.type === 'SAMPLES') {
+            if (data.type !== 'SAMPLES' && data.status === 'ACCEPTED' && problem) {
               const sample = problem.sampleTestCases.find((tc: any) => tc.input.trim() === customInput.trim());
               if (sample) {
                 if (data.stdout.trim() === sample.expectedOutput.trim()) {
@@ -536,7 +537,7 @@ export default function ProblemPage() {
               status={competition.status}
               attemptStartedAt={competition.attemptStartedAt}
               timeLimitMinutes={competition.timeLimitMinutes}
-              onExpire={() => {
+              onExpire={competition.attemptCompleted ? undefined : () => {
                 setTimeUp(true);
               }}
             />
@@ -734,7 +735,42 @@ export default function ProblemPage() {
                       Running...
                     </div>
                   )}
-                  {runResult && (
+                  {runResult && runResult.type === 'SAMPLES' && (
+                    <div className="space-y-4">
+                      {runResult.results?.map((res: any, idx: number) => (
+                        <div key={idx} className="bg-arena-surface border border-arena-border rounded p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className={`flex items-center gap-2 font-semibold ${res.status === 'ACCEPTED' ? 'text-arena-green' : 'text-arena-red'}`}>
+                              {res.status === 'ACCEPTED' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                              Sample Test Case {idx + 1}
+                            </div>
+                            <div className="flex items-center gap-3 text-arena-muted">
+                              {res.executionTimeMs > 0 && <span>{res.executionTimeMs}ms</span>}
+                              <span className={res.status === 'ACCEPTED' ? 'text-arena-green/80' : 'text-arena-red/80'}>{res.status}</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                            <div>
+                              <p className="text-arena-muted mb-1 text-[10px] uppercase tracking-wider">Input</p>
+                              <pre className="bg-arena-bg border border-arena-border rounded p-2 text-arena-text overflow-x-auto max-h-32 whitespace-pre-wrap">{res.input}</pre>
+                            </div>
+                            <div>
+                              <p className="text-arena-muted mb-1 text-[10px] uppercase tracking-wider">Expected Output</p>
+                              <pre className="bg-arena-bg border border-arena-border rounded p-2 text-arena-text overflow-x-auto max-h-32 whitespace-pre-wrap">{res.expectedOutput}</pre>
+                            </div>
+                            <div>
+                              <p className="text-arena-muted mb-1 text-[10px] uppercase tracking-wider">Actual Output</p>
+                              <pre className={`bg-arena-bg border rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap ${res.status === 'ACCEPTED' ? 'border-arena-border text-arena-text' : 'border-arena-red/30 text-arena-red'}`}>
+                                {res.stdout || (res.stderr ? res.stderr : 'No output')}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {runResult && runResult.type !== 'SAMPLES' && (
                     <div className="space-y-2">
                       <div className={`flex items-center gap-2 font-semibold ${
                         ['ACCEPTED', 'Correct Output', 'Execution Successful'].includes(runResult.status) ? 'text-arena-green' :
@@ -812,13 +848,22 @@ export default function ProblemPage() {
           {/* Action buttons */}
           <div className="flex items-center gap-3 px-3 py-2 border-t border-arena-border bg-arena-surface/50">
             <button
-              onClick={handleRun}
+              onClick={() => handleRun(true)}
               disabled={running || submitting}
               className="btn-secondary flex items-center gap-2 text-sm"
-              id="run-btn"
+              id="run-samples-btn"
             >
               <Play className="w-4 h-4" />
-              Run
+              Run Samples
+            </button>
+            <button
+              onClick={() => handleRun(false)}
+              disabled={running || submitting}
+              className="btn-secondary flex items-center gap-2 text-sm"
+              id="run-custom-btn"
+            >
+              <Terminal className="w-4 h-4" />
+              Run Custom Input
             </button>
             <button
               onClick={handleSubmit}
@@ -868,7 +913,6 @@ export default function ProblemPage() {
             <button 
               onClick={() => {
                 endAttempt();
-                navigate('/competitions');
               }}
               className="btn-primary w-full"
             >

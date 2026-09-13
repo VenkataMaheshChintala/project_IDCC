@@ -16,7 +16,8 @@ public class SubmissionDtos {
     public record RunRequest(
             @NotBlank String language,
             @NotBlank String sourceCode,
-            @NotNull String input   // custom input for run
+            @NotNull String input,
+            Boolean runSamples
     ) {}
 
     public record SubmissionResponse(

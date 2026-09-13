@@ -165,8 +165,8 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.error(err));
     }
-    // Reload to apply attemptCompleted state
-    window.location.reload();
+    // Redirect to dashboard
+    window.location.href = '/competitions';
   };
 
   const returnToFullscreen = async () => {

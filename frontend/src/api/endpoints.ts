@@ -40,7 +40,7 @@ export const problemApi = {
 export const submissionApi = {
   submit: (problemId: number, data: { language: string; sourceCode: string }) =>
     api.post(`/problems/${problemId}/submit`, data).then(r => r.data),
-  run: (problemId: number, data: { language: string; sourceCode: string; input: string }) =>
+  run: (problemId: number, data: { language: string; sourceCode: string; input: string; runSamples?: boolean }) =>
     api.post(`/problems/${problemId}/run`, data).then(r => r.data),
   mySubmissions: () => api.get('/submissions').then(r => r.data),
   get: (id: number) => api.get(`/submissions/${id}`).then(r => r.data),

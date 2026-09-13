@@ -17,8 +17,17 @@ public class JudgeJob {
     private int timeLimitMs;
     private int memoryLimitMb;
     private String jobType;   // "SUBMIT" or "RUN"
+    private Boolean runSamples;
     private String runInput;
     private String runJobId;
+
+    public Boolean getRunSamples() {
+        return runSamples;
+    }
+
+    public void setRunSamples(Boolean runSamples) {
+        this.runSamples = runSamples;
+    }
 
     public JudgeJob() {}
 

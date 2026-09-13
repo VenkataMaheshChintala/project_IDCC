@@ -135,7 +135,8 @@ public class SubmissionService {
                 .timeLimitMs(problem.getTimeLimitMs())
                 .memoryLimitMb(problem.getMemoryLimitMb())
                 .jobType("RUN")
-                .runInput(req.input())
+                .runSamples(req.runSamples() != null ? req.runSamples() : false)
+                .runInput(req.input() != null ? req.input() : "")
                 .runJobId(runJobId)
                 .build();
 

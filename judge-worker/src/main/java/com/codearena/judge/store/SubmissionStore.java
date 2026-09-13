@@ -95,6 +95,25 @@ public class SubmissionStore {
         );
     }
 
+    public List<TestCaseRecord> getSampleTestCases(Long problemId) {
+        return jdbc.query("""
+            SELECT id, input, expected_output, is_hidden, points, order_index
+            FROM test_cases
+            WHERE problem_id = ? AND is_sample = true
+            ORDER BY order_index ASC
+            """,
+                (rs, row) -> new TestCaseRecord(
+                        rs.getLong("id"),
+                        rs.getString("input"),
+                        rs.getString("expected_output"),
+                        rs.getBoolean("is_hidden"),
+                        rs.getInt("points"),
+                        rs.getInt("order_index")
+                ),
+                problemId
+        );
+    }
+
     public int getProblemPoints(Long problemId) {
         try {
             Integer pts = jdbc.queryForObject(

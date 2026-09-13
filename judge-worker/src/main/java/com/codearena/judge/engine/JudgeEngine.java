@@ -182,6 +182,59 @@ public class JudgeEngine {
                 job.getTimeLimitMs(), job.getMemoryLimitMb());
     }
 
+    public java.util.List<java.util.Map<String, Object>> runSamples(JudgeJob job) {
+        log.info("[Judge] Run Samples job={} problem={}", job.getRunJobId(), job.getProblemId());
+        List<TestCaseRecord> samples = submissionStore.getSampleTestCases(job.getProblemId());
+        java.util.List<java.util.Map<String, Object>> results = new java.util.ArrayList<>();
+        
+        List<String> inputs = samples.stream()
+                .map(tc -> tc.input() != null ? tc.input() : "")
+                .toList();
+
+        try (DockerSandbox.SubmissionSession session = sandbox.createSession(
+                job.getLanguage(), job.getSourceCode(), job.getRunnerCode(), inputs, job.getMemoryLimitMb())) {
+            
+            ExecutionResult compileResult = session.compile();
+            if (compileResult.getVerdict() != ExecutionResult.Verdict.ACCEPTED) {
+                // Compilation error applies to all
+                java.util.Map<String, Object> err = java.util.Map.of(
+                    "status", "COMPILATION_ERROR",
+                    "stderr", truncate(compileResult.getStderr(), 2000)
+                );
+                results.add(err);
+                return results;
+            }
+
+            for (int i = 0; i < samples.size(); i++) {
+                TestCaseRecord tc = samples.get(i);
+                ExecutionResult execResult = session.executeTestCase(i, job.getTimeLimitMs());
+                
+                String status = execResult.getVerdict().name();
+                if (execResult.getVerdict() == ExecutionResult.Verdict.ACCEPTED) {
+                    boolean correct = comparator.matches(tc.expectedOutput(), execResult.getStdout());
+                    if (!correct) status = "WRONG_ANSWER";
+                }
+                
+                java.util.Map<String, Object> res = new java.util.HashMap<>();
+                res.put("status", status);
+                res.put("input", tc.input());
+                res.put("expectedOutput", tc.expectedOutput());
+                res.put("stdout", truncate(execResult.getStdout(), 2000));
+                res.put("stderr", truncate(execResult.getStderr(), 2000));
+                res.put("executionTimeMs", execResult.getExecutionTimeMs());
+                results.add(res);
+            }
+        } catch (Exception e) {
+            log.error("[Judge] Exception while running samples: {}", e.getMessage(), e);
+            java.util.Map<String, Object> err = java.util.Map.of(
+                "status", "SYSTEM_ERROR",
+                "stderr", "Execution engine error: " + e.getMessage()
+            );
+            results.add(err);
+        }
+        return results;
+    }
+
     private String truncate(String s, int max) {
         if (s == null) return null;
         return s.length() > max ? s.substring(0, max) + "\n[truncated]" : s;

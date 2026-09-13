@@ -140,19 +140,41 @@ public class QueueConsumer {
     }
 
     private void processRun(JudgeJob job) {
-        ExecutionResult result;
         try {
-            result = judgeEngine.run(job);
-        } catch (Exception e) {
-            result = ExecutionResult.builder().verdict(ExecutionResult.Verdict.SYSTEM_ERROR).stderr("Judge infrastructure error").build();
-        }
-        try {
-            Map<String, Object> response = Map.of("runJobId", job.getRunJobId(), "userId", job.getUserId(),
-                    "status", result.getVerdict().name(), "stdout", truncate(result.getStdout()),
-                    "stderr", truncate(result.getStderr()), "executionTimeMs", result.getExecutionTimeMs());
+            Map<String, Object> response;
+            if (Boolean.TRUE.equals(job.getRunSamples())) {
+                List<Map<String, Object>> results = judgeEngine.runSamples(job);
+                response = Map.of(
+                    "runJobId", job.getRunJobId(),
+                    "userId", job.getUserId(),
+                    "type", "SAMPLES",
+                    "results", results
+                );
+            } else {
+                ExecutionResult result = judgeEngine.run(job);
+                response = Map.of(
+                    "runJobId", job.getRunJobId(),
+                    "userId", job.getUserId(),
+                    "type", "CUSTOM",
+                    "status", result.getVerdict().name(),
+                    "stdout", truncate(result.getStdout()),
+                    "stderr", truncate(result.getStderr()),
+                    "executionTimeMs", result.getExecutionTimeMs()
+                );
+            }
             redis.opsForValue().set(runResultPrefix + job.getRunJobId(), objectMapper.writeValueAsString(response), Duration.ofSeconds(runResultTtlSeconds));
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to persist run result", e);
+            log.error("[Worker] Failed run={}", job.getRunJobId(), e);
+            try {
+                Map<String, Object> errorResp = Map.of(
+                    "runJobId", job.getRunJobId(),
+                    "status", "SYSTEM_ERROR",
+                    "stderr", "Judge infrastructure error"
+                );
+                redis.opsForValue().set(runResultPrefix + job.getRunJobId(), objectMapper.writeValueAsString(errorResp), Duration.ofSeconds(runResultTtlSeconds));
+            } catch (Exception ex) {
+                // ignore
+            }
         }
     }
 

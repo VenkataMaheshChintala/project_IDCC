@@ -49,6 +49,9 @@ public class RunResultService {
     }
 
     public boolean isTerminal(Map<String, Object> value) {
+        if ("SAMPLES".equals(value.get("type"))) {
+            return true;
+        }
         Object status = value.get("status");
         return status != null && !"QUEUED".equals(status) && !"RUNNING".equals(status);
     }
