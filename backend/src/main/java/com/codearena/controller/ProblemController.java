@@ -58,6 +58,28 @@ public class ProblemController {
         return ResponseEntity.ok(problemService.update(id, req));
     }
 
+    @PostMapping("/api/problems/{id}/draft")
+    public ResponseEntity<Void> saveDraft(
+            @PathVariable Long id,
+            @Valid @RequestBody ProblemDtos.DraftRequest req,
+            @AuthenticationPrincipal User user) {
+        problemService.saveDraft(id, user.getId(), req.language(), req.sourceCode());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/api/problems/{id}/draft")
+    public ResponseEntity<java.util.Map<String, String>> getDraft(
+            @PathVariable Long id,
+            @RequestParam String language,
+            @AuthenticationPrincipal User user) {
+        String draft = problemService.getDraft(id, user.getId(), language);
+        if (draft == null) {
+            return ResponseEntity.ok(java.util.Collections.emptyMap());
+        }
+        return ResponseEntity.ok(java.util.Map.of("sourceCode", draft));
+    }
+
+
     @DeleteMapping("/api/problems/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteProblem(@PathVariable Long id) {

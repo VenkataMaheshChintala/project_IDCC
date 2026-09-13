@@ -217,6 +217,36 @@ public class CompetitionService {
         return participantRepository.existsByCompetitionIdAndUserId(competitionId, userId);
     }
 
+    @Transactional(readOnly = true)
+    public List<CompetitionDtos.ParticipantResponse> getParticipants(Long competitionId) {
+        return participantRepository.findByCompetitionId(competitionId).stream()
+                .map(cp -> new CompetitionDtos.ParticipantResponse(
+                        cp.getUser().getId(),
+                        cp.getUser().getUsername(),
+                        cp.getJoinedAt(),
+                        cp.getAttemptStartedAt(),
+                        cp.getAttemptEndedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void resumeAttempt(Long competitionId, Long userId) {
+        CompetitionParticipant cp = participantRepository.findByCompetitionIdAndUserId(competitionId, userId)
+                .orElseThrow(() -> new NotFoundException("Participant not found"));
+
+        if (cp.getAttemptEndedAt() != null) {
+            if (cp.getAttemptStartedAt() != null) {
+                long durationLockedOut = Instant.now().toEpochMilli() - cp.getAttemptEndedAt().toEpochMilli();
+                if (durationLockedOut > 0) {
+                    cp.setAttemptStartedAt(cp.getAttemptStartedAt().plusMillis(durationLockedOut));
+                }
+            }
+            cp.setAttemptEndedAt(null);
+            participantRepository.save(cp);
+        }
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     public Competition findOrThrow(Long id) {

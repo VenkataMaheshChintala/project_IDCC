@@ -34,6 +34,10 @@ export const problemApi = {
   addTestCase: (problemId: number, data: any) =>
     api.post(`/problems/${problemId}/test-cases`, data).then(r => r.data),
   deleteTestCase: (testCaseId: number) => api.delete(`/test-cases/${testCaseId}`),
+  saveDraft: (problemId: number, data: { language: string; sourceCode: string }) =>
+    api.post(`/problems/${problemId}/draft`, data),
+  getDraft: (problemId: number, language: string) =>
+    api.get(`/problems/${problemId}/draft?language=${language}`).then(r => r.data),
 };
 
 // ─── Submissions ──────────────────────────────────────────────────────────────
@@ -59,6 +63,10 @@ export const leaderboardApi = {
 export const adminApi = {
   getSubmissions: (params: any) =>
     api.get('/admin/submissions', { params }).then(r => r.data),
+  getParticipants: (competitionId: number) =>
+    api.get(`/admin/competitions/${competitionId}/participants`).then(r => r.data),
+  resumeParticipant: (competitionId: number, userId: number) =>
+    api.post(`/admin/competitions/${competitionId}/participants/${userId}/resume`),
   exportSubmissionsCsv: (competitionId: number) =>
     api.get(`/admin/competitions/${competitionId}/submissions/export`, { responseType: 'blob' }),
 };

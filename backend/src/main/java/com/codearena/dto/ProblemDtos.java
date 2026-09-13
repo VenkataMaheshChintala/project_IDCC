@@ -22,6 +22,11 @@ public class ProblemDtos {
             @Positive int memoryLimitMb
     ) {}
 
+    public record DraftRequest(
+            @NotBlank String language,
+            @NotBlank String sourceCode
+    ) {}
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UpdateRequest(
             String title,

@@ -52,4 +52,12 @@ public class CompetitionDtos {
             boolean attemptCompleted,
             Instant attemptStartedAt
     ) {}
+    
+    public record ParticipantResponse(
+            Long userId,
+            String username,
+            Instant joinedAt,
+            Instant attemptStartedAt,
+            Instant attemptEndedAt
+    ) {}
 }

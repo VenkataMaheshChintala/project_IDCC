@@ -315,6 +315,12 @@ export default function AdminCompetitionPage() {
                 }`}>
                 Submissions
               </button>
+              <button onClick={() => setTab('participants')}
+                className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
+                  tab === 'participants' ? 'bg-arena-bg text-arena-text shadow shadow-black/20' : 'text-arena-muted hover:text-arena-text hover:bg-arena-bg/50'
+                }`}>
+                Participants
+              </button>
             </div>
           )}
 
@@ -371,6 +377,10 @@ export default function AdminCompetitionPage() {
 
           {!isNew && competition && tab === 'submissions' && (
             <AdminSubmissionsTab competitionId={Number(id)} />
+          )}
+
+          {!isNew && competition && tab === 'participants' && (
+            <AdminParticipantsTab competitionId={Number(id)} />
           )}
         </div>
 
@@ -746,6 +756,95 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
               )}
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resuming, setResuming] = useState<number | null>(null);
+
+  const fetchParticipants = () => {
+    import('../../api/endpoints').then(({ adminApi }) =>
+      adminApi.getParticipants(competitionId).then(setParticipants).finally(() => setLoading(false))
+    );
+  };
+
+  useEffect(() => {
+    fetchParticipants();
+  }, [competitionId]);
+
+  const handleResume = async (userId: number) => {
+    setResuming(userId);
+    try {
+      const { adminApi } = await import('../../api/endpoints');
+      await adminApi.resumeParticipant(competitionId, userId);
+      fetchParticipants();
+    } catch (err) {
+      console.error('Failed to resume participant', err);
+    } finally {
+      setResuming(null);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="card animate-fade-in border-l-4 border-l-arena-accent">
+      <h2 className="text-lg font-semibold text-arena-text mb-4 flex items-center gap-2">
+        <Info className="w-5 h-5 text-arena-accent" />
+        Participants
+      </h2>
+      {!participants.length ? (
+        <div className="text-center py-10 border-2 border-dashed border-arena-border rounded-lg bg-arena-bg">
+          <p className="text-arena-muted text-sm">No participants have joined yet.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-xs text-arena-muted uppercase tracking-wider border-b border-arena-border">
+                <th className="text-left py-3 pr-6 font-medium">Username</th>
+                <th className="text-left py-3 pr-6 font-medium">Status</th>
+                <th className="text-right py-3 pr-6 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {participants.map((p: any) => {
+                const isEnded = p.attemptEndedAt != null;
+                const inProgress = !isEnded && p.attemptStartedAt != null;
+                
+                return (
+                  <tr key={p.userId} className="table-row border-b border-arena-border/30 last:border-0">
+                    <td className="py-3 pr-6 font-medium text-arena-text">{p.username}</td>
+                    <td className="py-3 pr-6">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        isEnded ? 'bg-red-500/20 text-red-400' :
+                        inProgress ? 'bg-green-500/20 text-green-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {isEnded ? 'Ended' : inProgress ? 'In Progress' : 'Not Started'}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-6 text-right">
+                      {isEnded && (
+                        <button
+                          onClick={() => handleResume(p.userId)}
+                          disabled={resuming === p.userId}
+                          className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50"
+                        >
+                          {resuming === p.userId ? 'Resuming...' : 'Resume Attempt'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

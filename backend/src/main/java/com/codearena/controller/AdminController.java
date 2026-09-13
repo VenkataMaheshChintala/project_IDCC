@@ -16,9 +16,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.codearena.dto.LeaderboardDtos;
+import com.codearena.dto.CompetitionDtos;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -46,6 +48,17 @@ public class AdminController {
 
         return ResponseEntity.ok(
                 submissionService.adminList(competitionId, problemId, userId, statusEnum, page));
+    }
+
+    @GetMapping("/competitions/{id}/participants")
+    public ResponseEntity<List<CompetitionDtos.ParticipantResponse>> listParticipants(@PathVariable Long id) {
+        return ResponseEntity.ok(competitionService.getParticipants(id));
+    }
+
+    @PostMapping("/competitions/{id}/participants/{userId}/resume")
+    public ResponseEntity<Void> resumeParticipant(@PathVariable Long id, @PathVariable Long userId) {
+        competitionService.resumeAttempt(id, userId);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/competitions/{competitionId}/leaderboard/export")

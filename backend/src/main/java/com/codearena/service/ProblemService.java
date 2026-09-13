@@ -23,6 +23,24 @@ public class ProblemService {
     private final SubmissionRepository submissionRepository;
     private final JdbcTemplate jdbcTemplate;
 
+    // ─── Drafts ───────────────────────────────────────────────────────────────
+
+    public void saveDraft(Long problemId, Long userId, String language, String sourceCode) {
+        String sql = """
+            INSERT INTO code_drafts (user_id, problem_id, language, source_code, updated_at)
+            VALUES (?, ?, ?, ?, NOW())
+            ON CONFLICT (user_id, problem_id, language)
+            DO UPDATE SET source_code = EXCLUDED.source_code, updated_at = NOW()
+        """;
+        jdbcTemplate.update(sql, userId, problemId, language.toUpperCase(), sourceCode);
+    }
+
+    public String getDraft(Long problemId, Long userId, String language) {
+        String sql = "SELECT source_code FROM code_drafts WHERE user_id = ? AND problem_id = ? AND language = ?";
+        List<String> results = jdbcTemplate.queryForList(sql, String.class, userId, problemId, language.toUpperCase());
+        return results.isEmpty() ? null : results.get(0);
+    }
+
     // ─── Problems ─────────────────────────────────────────────────────────────
 
     public List<ProblemDtos.ProblemSummary> listByCompetition(Long competitionId, User user) {

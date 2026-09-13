@@ -124,8 +124,10 @@ export default function ProblemPage() {
     Promise.all([
       problemApi.get(Number(problemId)),
       competitionApi.get(Number(compId)),
-      problemApi.listByCompetition(Number(compId)).catch(() => [])
-    ]).then(([p, c, probs]) => {
+      problemApi.listByCompetition(Number(compId)).catch(() => []),
+      problemApi.getDraft(Number(problemId), 'JAVA').catch(() => ({})),
+      problemApi.getDraft(Number(problemId), 'C').catch(() => ({}))
+    ]).then(([p, c, probs, javaDraft, cDraft]) => {
       // Check access controls
       if (!inAttempt && !isAdmin && c.status !== 'ENDED') {
         window.location.href = `/competitions/${compId}`;
@@ -137,8 +139,8 @@ export default function ProblemPage() {
       setProblems(probs);
       
       setCodes({
-        JAVA: savedJava || p.starterCode || DEFAULT_JAVA,
-        C: savedC || p.cStarterCode || DEFAULT_C
+        JAVA: javaDraft.sourceCode || savedJava || p.starterCode || DEFAULT_JAVA,
+        C: cDraft.sourceCode || savedC || p.cStarterCode || DEFAULT_C
       });
       
       if (p.sampleTestCases?.length > 0) {
@@ -269,6 +271,8 @@ export default function ProblemPage() {
     }
   };
 
+  const draftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (problemId) {
       if (codes.JAVA !== undefined && codes.JAVA !== '') {
@@ -277,8 +281,17 @@ export default function ProblemPage() {
       if (codes.C !== undefined && codes.C !== '') {
         localStorage.setItem(`code-draft-${problemId}-C`, codes.C);
       }
+
+      if (!isAdmin) {
+        if (draftTimeoutRef.current) clearTimeout(draftTimeoutRef.current);
+        draftTimeoutRef.current = setTimeout(() => {
+          if (codes[language]) {
+            problemApi.saveDraft(Number(problemId), { language, sourceCode: codes[language] }).catch(console.error);
+          }
+        }, 2000);
+      }
     }
-  }, [codes, problemId]);
+  }, [codes, language, problemId, isAdmin]);
 
   const confirmResetCode = () => {
     const defaultCode = language === 'C' ? (problem?.cStarterCode || DEFAULT_C) : (problem?.starterCode || DEFAULT_JAVA);
