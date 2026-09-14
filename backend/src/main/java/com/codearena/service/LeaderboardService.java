@@ -2,6 +2,7 @@ package com.codearena.service;
 
 import com.codearena.domain.*;
 import com.codearena.dto.LeaderboardDtos;
+import com.codearena.dto.CompetitionDtos;
 import com.codearena.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ public class LeaderboardService {
     private final LeaderboardEntryRepository leaderboardRepository;
     private final SubmissionRepository submissionRepository;
     private final CompetitionService competitionService;
+    private final SubmissionService submissionService;
 
     public LeaderboardDtos.LeaderboardResponse getLeaderboard(Long competitionId) {
         Competition competition = competitionService.findOrThrow(competitionId);
@@ -92,5 +94,60 @@ public class LeaderboardService {
 
         log.info("[Leaderboard] competition={} user={} score={} solved={}",
                 competitionId, userId, totalScore, solved);
+    }
+
+    @Transactional(readOnly = true)
+    public CompetitionDtos.ParticipantDetailsResponse getParticipantDetails(Long competitionId, Long userId) {
+        Competition competition = competitionService.findOrThrow(competitionId);
+        
+        LeaderboardEntry entry = leaderboardRepository
+                .findByCompetitionIdAndUserId(competitionId, userId)
+                .orElse(null);
+
+        int totalScore = entry != null ? entry.getTotalScore() : 0;
+        int solved = entry != null ? entry.getProblemsSolved() : 0;
+        String username = entry != null ? entry.getUser().getUsername() : "Unknown";
+
+        if (entry == null) {
+            // fallback to finding user if they haven't submitted anything but joined
+            var participant = competitionService.getParticipants(competitionId).stream()
+                .filter(p -> p.userId().equals(userId))
+                .findFirst();
+            if (participant.isPresent()) {
+                username = participant.get().username();
+            }
+        }
+
+        List<CompetitionDtos.ProblemAttemptDetails> attempts = new ArrayList<>();
+
+        for (Problem problem : competition.getProblems()) {
+            org.springframework.data.domain.Page<Submission> bestSubmissions = submissionRepository.findHighestScoringSubmission(
+                    competitionId, userId, problem.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+            
+            if (bestSubmissions.hasContent()) {
+                Submission best = bestSubmissions.getContent().get(0);
+                attempts.add(new CompetitionDtos.ProblemAttemptDetails(
+                        problem.getId(),
+                        problem.getTitle(),
+                        problem.getPoints(),
+                        submissionService.toResponse(best, true)
+                ));
+            } else {
+                attempts.add(new CompetitionDtos.ProblemAttemptDetails(
+                        problem.getId(),
+                        problem.getTitle(),
+                        problem.getPoints(),
+                        null
+                ));
+            }
+        }
+
+        return new CompetitionDtos.ParticipantDetailsResponse(
+                userId,
+                username,
+                totalScore,
+                solved,
+                attempts
+        );
     }
 }

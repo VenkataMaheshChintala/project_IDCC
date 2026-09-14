@@ -65,6 +65,8 @@ export const adminApi = {
     api.get('/admin/submissions', { params }).then(r => r.data),
   getParticipants: (competitionId: number) =>
     api.get(`/admin/competitions/${competitionId}/participants`).then(r => r.data),
+  getParticipantDetails: (competitionId: number, userId: number) =>
+    api.get(`/admin/competitions/${competitionId}/participants/${userId}/details`).then(r => r.data),
   resumeParticipant: (competitionId: number, userId: number) =>
     api.post(`/admin/competitions/${competitionId}/participants/${userId}/resume`),
   exportSubmissionsCsv: (competitionId: number) =>

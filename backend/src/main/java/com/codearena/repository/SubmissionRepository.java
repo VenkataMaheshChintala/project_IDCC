@@ -37,6 +37,19 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             @Param("problemId") Long problemId);
 
     @Query("""
+        SELECT s FROM Submission s
+        WHERE s.competition.id = :compId
+        AND s.user.id = :userId
+        AND s.problem.id = :problemId
+        ORDER BY s.score DESC, s.createdAt DESC
+    """)
+    Page<Submission> findHighestScoringSubmission(
+            @Param("compId") Long competitionId,
+            @Param("userId") Long userId,
+            @Param("problemId") Long problemId,
+            Pageable pageable);
+
+    @Query("""
         SELECT COUNT(s) FROM Submission s
         WHERE s.user.id = :userId
         AND s.competition.id = :compId

@@ -5,7 +5,8 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import {
   Plus, Save, Trash2, Download, ChevronLeft,
-  ExternalLink, Calendar, FileText, Settings, Info, Award
+  ExternalLink, Calendar, FileText, Settings, Info, Award,
+  User, X
 } from 'lucide-react';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
@@ -505,6 +506,11 @@ export default function AdminCompetitionPage() {
 function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [participantDetails, setParticipantDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     import('../../api/endpoints').then(({ leaderboardApi }) =>
@@ -512,14 +518,42 @@ function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
     );
   }, [competitionId]);
 
+  const openParticipantDetails = (userId: number) => {
+    setSelectedUserId(userId);
+    setLoadingDetails(true);
+    import('../../api/endpoints').then(({ adminApi }) =>
+      adminApi.getParticipantDetails(competitionId, userId)
+        .then(setParticipantDetails)
+        .finally(() => setLoadingDetails(false))
+    );
+  };
+
+  const closeParticipantDetails = () => {
+    setSelectedUserId(null);
+    setParticipantDetails(null);
+  };
+
   if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="card animate-fade-in border-l-4 border-l-yellow-500">
-      <h2 className="text-lg font-semibold text-arena-text mb-4 flex items-center gap-2">
-        <Award className="w-5 h-5 text-yellow-500" />
-        Live Leaderboard
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
+          <Award className="w-5 h-5 text-yellow-500" />
+          Live Leaderboard
+        </h2>
+        {data?.entries?.length > 0 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search team name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
+            />
+          </div>
+        )}
+      </div>
       {!data?.entries?.length ? (
         <div className="text-center py-10 border-2 border-dashed border-arena-border rounded-lg bg-arena-bg">
           <p className="text-arena-muted text-sm">No submissions yet to generate a leaderboard.</p>
@@ -536,7 +570,9 @@ function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
               </tr>
             </thead>
             <tbody>
-              {data.entries.map((e: any) => (
+              {data.entries
+                .filter((e: any) => e.username.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((e: any) => (
                 <tr key={e.userId} className="table-row">
                   <td className="py-3 pr-6">
                     <span className={`font-bold text-sm ${
@@ -547,13 +583,119 @@ function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
                       #{e.rank}
                     </span>
                   </td>
-                  <td className="py-3 pr-6 font-medium text-arena-text">{e.username}</td>
+                  <td className="py-3 pr-6 font-medium">
+                    <button 
+                      onClick={() => openParticipantDetails(e.userId)}
+                      className="text-arena-text hover:text-arena-accent transition-colors"
+                    >
+                      {e.username}
+                    </button>
+                  </td>
                   <td className="py-3 pr-6 text-right font-mono font-bold text-arena-accent">{e.totalScore}</td>
                   <td className="py-3 text-right text-arena-text-dim text-sm">{e.problemsSolved}</td>
                 </tr>
               ))}
+              {data.entries.filter((e: any) => e.username.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-arena-muted text-sm">
+                    No teams found matching "{searchQuery}"
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-arena-surface border border-arena-border rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-arena-border flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-arena-text flex items-center gap-2">
+                  <User className="w-5 h-5 text-arena-accent" />
+                  {participantDetails?.username || 'Loading...'}
+                </h3>
+                {participantDetails && (
+                  <p className="text-arena-muted text-sm mt-1">
+                    Score: <span className="font-mono text-arena-accent font-bold">{participantDetails.totalScore}</span> • 
+                    Solved: <span className="text-arena-text-dim">{participantDetails.problemsSolved}</span>
+                  </p>
+                )}
+              </div>
+              <button 
+                onClick={closeParticipantDetails}
+                className="p-2 text-arena-muted hover:text-arena-text hover:bg-arena-bg rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {loadingDetails ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : participantDetails ? (
+                <div className="space-y-6">
+                  {participantDetails.attempts.map((attempt: any) => (
+                    <div key={attempt.problemId} className="border border-arena-border rounded-lg bg-arena-bg overflow-hidden">
+                      <div className="px-4 py-3 bg-arena-surface/50 border-b border-arena-border flex items-center justify-between">
+                        <span className="font-semibold text-arena-text">{attempt.problemTitle}</span>
+                        {attempt.bestSubmission ? (
+                          <div className="flex items-center gap-3">
+                            <StatusBadge status={attempt.bestSubmission.status} />
+                            <span className="text-sm font-mono text-arena-accent">
+                              {attempt.bestSubmission.score} / {attempt.maxScore}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold px-2 py-1 bg-gray-500/20 text-gray-400 rounded">
+                            Not Attempted
+                          </span>
+                        )}
+                      </div>
+                      {attempt.bestSubmission ? (
+                        <div className="p-4 space-y-6">
+                          <div>
+                            <h4 className="text-xs font-medium text-arena-text-dim uppercase tracking-wider mb-2">Test Cases</h4>
+                            <div className="space-y-2">
+                              {attempt.bestSubmission.testResults?.map((tr: any) => (
+                                <div key={tr.index} className="flex items-center justify-between p-2 rounded bg-black/20 border border-arena-border/50">
+                                  <span className="text-sm text-arena-text">Test Case #{tr.index + 1}</span>
+                                  <StatusBadge status={tr.status} />
+                                </div>
+                              ))}
+                              {!attempt.bestSubmission.testResults?.length && (
+                                <p className="text-sm text-arena-muted italic">No test case details available.</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-xs font-medium text-arena-text-dim uppercase tracking-wider">Submitted Code</h4>
+                              <span className="text-xs font-mono px-2 py-0.5 bg-arena-bg rounded border border-arena-border text-arena-muted">
+                                {attempt.bestSubmission.language}
+                              </span>
+                            </div>
+                            <pre className="p-4 rounded-lg bg-black/40 border border-arena-border/50 overflow-x-auto text-sm font-mono text-gray-300 max-h-96 overflow-y-auto">
+                              <code>{attempt.bestSubmission.sourceCode}</code>
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-sm text-arena-muted">
+                          No submissions found for this problem.
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-arena-red py-4">Failed to load details.</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -564,6 +706,7 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [submissionDetails, setSubmissionDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -592,6 +735,17 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
           <FileText className="w-5 h-5 text-blue-500" />
           Participant Submissions
         </h2>
+        {data?.content?.length > 0 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search team name on page..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
+            />
+          </div>
+        )}
       </div>
 
       {!data?.content?.length ? (
@@ -614,7 +768,9 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {data.content.map((s: any) => (
+                {data.content
+                  .filter((s: any) => s.username.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((s: any) => (
                   <tr key={s.id} className="border-b border-arena-border/50 last:border-0 hover:bg-arena-bg/30 transition-colors">
                     <td className="py-3 pr-6 font-mono text-arena-muted">#{s.id}</td>
                     <td className="py-3 pr-6 font-medium text-arena-text">{s.username}</td>
@@ -636,6 +792,13 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
                     </td>
                   </tr>
                 ))}
+                {data.content.filter((s: any) => s.username.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-arena-muted text-sm">
+                      No submissions found matching "{searchQuery}" on this page
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -765,6 +928,7 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
 function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [resuming, setResuming] = useState<number | null>(null);
 
   const fetchParticipants = () => {
@@ -794,10 +958,23 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
 
   return (
     <div className="card animate-fade-in border-l-4 border-l-arena-accent">
-      <h2 className="text-lg font-semibold text-arena-text mb-4 flex items-center gap-2">
-        <Info className="w-5 h-5 text-arena-accent" />
-        Participants
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
+          <Info className="w-5 h-5 text-arena-accent" />
+          Participants
+        </h2>
+        {participants.length > 0 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search team name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
+            />
+          </div>
+        )}
+      </div>
       {!participants.length ? (
         <div className="text-center py-10 border-2 border-dashed border-arena-border rounded-lg bg-arena-bg">
           <p className="text-arena-muted text-sm">No participants have joined yet.</p>
@@ -813,7 +990,9 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
               </tr>
             </thead>
             <tbody>
-              {participants.map((p: any) => {
+              {participants
+                .filter((p: any) => p.username.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((p: any) => {
                 const isEnded = p.attemptEndedAt != null;
                 const inProgress = !isEnded && p.attemptStartedAt != null;
                 
@@ -843,6 +1022,13 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
                   </tr>
                 );
               })}
+              {participants.filter((p: any) => p.username.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-6 text-center text-arena-muted text-sm">
+                    No participants found matching "{searchQuery}"
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

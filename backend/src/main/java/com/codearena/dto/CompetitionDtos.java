@@ -60,4 +60,19 @@ public class CompetitionDtos {
             Instant attemptStartedAt,
             Instant attemptEndedAt
     ) {}
+
+    public record ProblemAttemptDetails(
+            Long problemId,
+            String problemTitle,
+            Integer maxScore,
+            SubmissionDtos.SubmissionResponse bestSubmission
+    ) {}
+
+    public record ParticipantDetailsResponse(
+            Long userId,
+            String username,
+            int totalScore,
+            int problemsSolved,
+            java.util.List<ProblemAttemptDetails> attempts
+    ) {}
 }

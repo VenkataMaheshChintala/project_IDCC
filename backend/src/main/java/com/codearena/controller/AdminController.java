@@ -61,6 +61,11 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/competitions/{id}/participants/{userId}/details")
+    public ResponseEntity<CompetitionDtos.ParticipantDetailsResponse> getParticipantDetails(@PathVariable Long id, @PathVariable Long userId) {
+        return ResponseEntity.ok(leaderboardService.getParticipantDetails(id, userId));
+    }
+
     @GetMapping("/competitions/{competitionId}/leaderboard/export")
     public ResponseEntity<String> exportLeaderboard(@PathVariable Long competitionId) throws IOException {
         LeaderboardDtos.LeaderboardResponse lb = leaderboardService.getLeaderboard(competitionId);

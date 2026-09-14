@@ -245,7 +245,7 @@ public class SubmissionService {
 
     // ─── Mappers ──────────────────────────────────────────────────────────────
 
-    private SubmissionDtos.SubmissionResponse toResponse(Submission s, boolean isAdmin) {
+    public SubmissionDtos.SubmissionResponse toResponse(Submission s, boolean isAdmin) {
         return new SubmissionDtos.SubmissionResponse(
                 s.getId(),
                 s.getUser().getId(),

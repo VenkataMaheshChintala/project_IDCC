@@ -355,6 +355,7 @@ export default function CompetitionPage() {
 function LeaderboardTab({ competitionId }: { competitionId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     import('../api/endpoints').then(({ leaderboardApi }) =>
@@ -366,10 +367,23 @@ function LeaderboardTab({ competitionId }: { competitionId: number }) {
 
   return (
     <div className="card">
-      <h2 className="text-lg font-semibold text-arena-text mb-4 flex items-center gap-2">
-        <Award className="w-5 h-5 text-arena-accent" />
-        Leaderboard
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
+          <Award className="w-5 h-5 text-arena-accent" />
+          Leaderboard
+        </h2>
+        {data?.entries?.length > 0 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search team name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
+            />
+          </div>
+        )}
+      </div>
       {!data?.entries?.length ? (
         <p className="text-arena-muted text-center py-8">No submissions yet</p>
       ) : (
@@ -383,7 +397,9 @@ function LeaderboardTab({ competitionId }: { competitionId: number }) {
             </tr>
           </thead>
           <tbody>
-            {data.entries.map((e: any) => (
+            {data.entries
+              .filter((e: any) => e.username.toLowerCase().includes(searchQuery.toLowerCase()))
+              .map((e: any) => (
               <tr key={e.userId} className="table-row">
                 <td className="py-3 pr-6">
                   <span className={`font-bold text-sm ${
@@ -399,6 +415,13 @@ function LeaderboardTab({ competitionId }: { competitionId: number }) {
                 <td className="py-3 text-right text-arena-text-dim text-sm">{e.problemsSolved}</td>
               </tr>
             ))}
+            {data.entries.filter((e: any) => e.username.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-arena-muted text-sm">
+                  No teams found matching "{searchQuery}"
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
