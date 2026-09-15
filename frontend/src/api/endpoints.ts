@@ -17,8 +17,10 @@ export const competitionApi = {
   update: (id: number, data: any) => api.put(`/competitions/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/competitions/${id}`),
   join: (id: number) => api.post(`/competitions/${id}/join`),
-  startAttempt: (id: number) => api.post(`/competitions/${id}/start-attempt`),
-  endAttempt: (id: number) => api.post(`/competitions/${id}/end-attempt`),
+  startAttempt: (compId: number) => api.post(`/competitions/${compId}/start-attempt`),
+  endAttempt: (compId: number, reason?: string) => 
+    api.post(`/competitions/${compId}/end-attempt`, null, { params: { reason } }),
+  recordWarning: (compId: number) => api.post(`/competitions/${compId}/warnings`).then(r => r.data),
   exportParticipants: (id: number) => api.get(`/competitions/${id}/participants/export`, { responseType: 'blob' }),
 };
 

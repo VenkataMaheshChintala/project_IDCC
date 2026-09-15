@@ -986,6 +986,8 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
               <tr className="text-xs text-arena-muted uppercase tracking-wider border-b border-arena-border">
                 <th className="text-left py-3 pr-6 font-medium">Username</th>
                 <th className="text-left py-3 pr-6 font-medium">Status</th>
+                <th className="text-left py-3 pr-6 font-medium">End Reason</th>
+                <th className="text-center py-3 pr-6 font-medium">Warnings</th>
                 <th className="text-right py-3 pr-6 font-medium">Actions</th>
               </tr>
             </thead>

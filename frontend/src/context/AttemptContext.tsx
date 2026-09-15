@@ -5,7 +5,7 @@ import { competitionApi } from '../api/endpoints';
 interface AttemptContextType {
   inAttempt: boolean;
   startAttempt: (compId: number) => Promise<void>;
-  endAttempt: () => Promise<void>;
+  endAttempt: (reason?: string) => Promise<void>;
 }
 
 const AttemptContext = createContext<AttemptContextType | undefined>(undefined);
@@ -30,26 +30,30 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
   const lastViolationTimeRef = useRef(0);
 
   useEffect(() => {
-    const handleViolation = () => {
-      if (!inAttempt) return;
+    const handleViolation = async () => {
+      if (!inAttempt || !activeCompId) return;
       
       const now = Date.now();
       // Prevent double counting if events fire simultaneously (e.g. blur + fullscreenchange)
       if (now - lastViolationTimeRef.current < 1000) return;
       lastViolationTimeRef.current = now;
 
-      setViolations(prev => {
-        const newCount = prev + 1;
-        sessionStorage.setItem('fullscreen_violations', String(newCount));
-        if (newCount >= 3) {
+      try {
+        const count = await competitionApi.recordWarning(activeCompId);
+        setViolations(count);
+        if (count >= 3) {
           setShowWarning(false);
           setTerminationMessage('You have exited fullscreen or lost focus 3 times. Your competition attempt has been ended.');
         } else {
           setCountdown(10);
           setShowWarning(true);
         }
-        return newCount;
-      });
+      } catch (err: any) {
+        if (err.response?.status === 400 && err.response?.data?.message?.includes("already ended")) {
+          setShowWarning(false);
+          setTerminationMessage('Your competition attempt has already been ended.');
+        }
+      }
     };
 
     const handleFullscreenChange = () => {
@@ -147,10 +151,10 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const endAttempt = async () => {
+  const endAttempt = async (reason?: string) => {
     if (activeCompId) {
       try {
-        await competitionApi.endAttempt(activeCompId);
+        await competitionApi.endAttempt(activeCompId, reason);
       } catch (err) {
         console.error("Failed to end attempt on backend:", err);
       }
@@ -159,7 +163,6 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
     setActiveCompId(null);
     sessionStorage.removeItem('in_attempt');
     sessionStorage.removeItem('attempt_comp_id');
-    sessionStorage.removeItem('fullscreen_violations');
     setViolations(0);
     setShowWarning(false);
     if (document.fullscreenElement) {
@@ -217,7 +220,7 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
                 Return to Fullscreen
               </button>
               <button 
-                onClick={endAttempt}
+                onClick={() => endAttempt('VOLUNTARY')}
                 className="text-arena-muted hover:text-arena-red transition-colors text-sm mt-2"
               >
                 End Competition Attempt
@@ -241,7 +244,7 @@ export function AttemptProvider({ children }: { children: ReactNode }) {
             <button
               onClick={async () => {
                 setTerminationMessage(null);
-                await endAttempt();
+                await endAttempt('KICKED');
               }}
               className="btn-primary w-full py-3 text-base font-semibold"
             >

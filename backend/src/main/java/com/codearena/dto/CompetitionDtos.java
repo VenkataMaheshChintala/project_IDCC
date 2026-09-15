@@ -58,7 +58,9 @@ public class CompetitionDtos {
             String username,
             Instant joinedAt,
             Instant attemptStartedAt,
-            Instant attemptEndedAt
+            Instant attemptEndedAt,
+            String endReason,
+            Integer warningsCount
     ) {}
 
     public record ProblemAttemptDetails(

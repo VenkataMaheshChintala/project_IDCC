@@ -925,7 +925,7 @@ export default function ProblemPage() {
             </p>
             <button 
               onClick={() => {
-                endAttempt();
+                endAttempt('TIME_LIMIT_EXCEEDED');
               }}
               className="btn-primary w-full"
             >
@@ -944,7 +944,7 @@ export default function ProblemPage() {
         variant="danger"
         onConfirm={() => {
           setShowEndAttemptModal(false);
-          endAttempt();
+          endAttempt('VOLUNTARY');
         }}
         onClose={() => setShowEndAttemptModal(false)}
       />

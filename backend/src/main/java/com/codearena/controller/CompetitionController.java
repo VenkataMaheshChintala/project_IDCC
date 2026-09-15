@@ -85,9 +85,18 @@ public class CompetitionController {
     @PostMapping("/{id}/end-attempt")
     public ResponseEntity<Void> endAttempt(
             @PathVariable Long id,
+            @RequestParam(required = false) String reason,
             @AuthenticationPrincipal User user) {
-        competitionService.endAttempt(id, user);
+        competitionService.endAttempt(id, user, reason);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/warnings")
+    public ResponseEntity<Integer> recordWarning(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        int warnings = competitionService.recordWarning(id, user);
+        return ResponseEntity.ok(warnings);
     }
 
     @PostMapping("/{id}/start-attempt")

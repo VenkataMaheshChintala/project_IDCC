@@ -186,7 +186,7 @@ public class CompetitionService {
     }
 
     @Transactional
-    public void endAttempt(Long competitionId, User user) {
+    public void endAttempt(Long competitionId, User user, String reason) {
         CompetitionParticipant cp = participantRepository.findByCompetitionIdAndUserId(competitionId, user.getId())
                 .orElseThrow(() -> new BadRequestException("You have not joined this competition"));
         
@@ -195,7 +195,26 @@ public class CompetitionService {
         }
         
         cp.setAttemptEndedAt(Instant.now());
+        cp.setEndReason(reason);
         participantRepository.save(cp);
+    }
+
+    @Transactional
+    public int recordWarning(Long competitionId, User user) {
+        CompetitionParticipant cp = participantRepository.findByCompetitionIdAndUserId(competitionId, user.getId())
+                .orElseThrow(() -> new BadRequestException("You have not joined this competition"));
+
+        if (cp.getAttemptEndedAt() != null) {
+            throw new BadRequestException("Attempt already ended");
+        }
+
+        cp.setWarningsCount(cp.getWarningsCount() + 1);
+        if (cp.getWarningsCount() >= 3) {
+            cp.setAttemptEndedAt(Instant.now());
+            cp.setEndReason("KICKED");
+        }
+        participantRepository.save(cp);
+        return cp.getWarningsCount();
     }
 
     @Transactional
@@ -225,7 +244,9 @@ public class CompetitionService {
                         cp.getUser().getUsername(),
                         cp.getJoinedAt(),
                         cp.getAttemptStartedAt(),
-                        cp.getAttemptEndedAt()
+                        cp.getAttemptEndedAt(),
+                        cp.getEndReason(),
+                        cp.getWarningsCount()
                 ))
                 .toList();
     }
@@ -243,6 +264,7 @@ public class CompetitionService {
                 }
             }
             cp.setAttemptEndedAt(null);
+            cp.setEndReason(null);
             participantRepository.save(cp);
         }
     }

@@ -32,6 +32,13 @@ public class CompetitionParticipant {
     @Column(name = "attempt_ended_at")
     private Instant attemptEndedAt;
 
+    @Column(name = "end_reason")
+    private String endReason;
+
+    @Column(name = "warnings_count", nullable = false)
+    @Builder.Default
+    private Integer warningsCount = 0;
+
     @PrePersist
     void prePersist() { joinedAt = Instant.now(); }
 }

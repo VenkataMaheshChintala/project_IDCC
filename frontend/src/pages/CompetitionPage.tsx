@@ -164,7 +164,7 @@ export default function CompetitionPage() {
                   </button>
                 )}
                 {joined && inAttempt && (
-                  <button onClick={endAttempt} className="btn-secondary flex items-center gap-2 border-arena-red/50 text-arena-red hover:bg-arena-red/10">
+                  <button onClick={() => endAttempt('VOLUNTARY')} className="btn-secondary flex items-center gap-2 border-arena-red/50 text-arena-red hover:bg-arena-red/10">
                     End Attempt
                   </button>
                 )}
@@ -208,7 +208,7 @@ export default function CompetitionPage() {
             </p>
             <button 
               onClick={() => {
-                endAttempt();
+                endAttempt('TIME_LIMIT_EXCEEDED');
               }}
               className="btn-primary w-full"
             >
