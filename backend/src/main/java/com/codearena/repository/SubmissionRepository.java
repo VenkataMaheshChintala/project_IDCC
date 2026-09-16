@@ -25,6 +25,15 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     @Query("""
         SELECT s FROM Submission s
+        JOIN FETCH s.user
+        JOIN FETCH s.problem
+        WHERE s.competition.id = :compId
+        ORDER BY s.createdAt DESC
+    """)
+    List<Submission> findByCompetitionIdWithUserAndProblemOrderByCreatedAtDesc(@Param("compId") Long compId);
+
+    @Query("""
+        SELECT s FROM Submission s
         WHERE s.competition.id = :compId
         AND s.user.id = :userId
         AND s.problem.id = :problemId
@@ -41,7 +50,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
         WHERE s.competition.id = :compId
         AND s.user.id = :userId
         AND s.problem.id = :problemId
-        ORDER BY s.score DESC, s.createdAt DESC
+        ORDER BY s.score DESC, s.createdAt ASC
     """)
     Page<Submission> findHighestScoringSubmission(
             @Param("compId") Long competitionId,

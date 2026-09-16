@@ -105,7 +105,12 @@
             <version>8.10.1</version>
         </dependency>
 
-        <!-- Apache Commons CSV for export -->
+        <!-- Apache Commons CSV and IO for export -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.16.1</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>

@@ -23,6 +23,7 @@ public class LeaderboardService {
     private final CompetitionService competitionService;
     private final SubmissionService submissionService;
 
+    @Transactional(readOnly = true)
     public LeaderboardDtos.LeaderboardResponse getLeaderboard(Long competitionId) {
         Competition competition = competitionService.findOrThrow(competitionId);
         List<LeaderboardEntry> entries = leaderboardRepository.findByCompetitionIdOrdered(competitionId);
@@ -61,17 +62,26 @@ public class LeaderboardService {
         Instant lastAccepted = null;
 
         for (Problem problem : problems) {
-            // Find best accepted submission for this problem
+            // Find highest-scoring submission for this problem (including partial scores)
+            org.springframework.data.domain.Page<Submission> highest = submissionRepository.findHighestScoringSubmission(
+                    competitionId, userId, problem.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+
+            if (highest.hasContent()) {
+                Submission best = highest.getContent().get(0);
+                totalScore += best.getScore();
+                if (best.getScore() > 0) {
+                    Instant compTime = best.getCompletedAt() != null ? best.getCompletedAt() : best.getCreatedAt();
+                    if (compTime != null && (lastAccepted == null || compTime.isAfter(lastAccepted))) {
+                        lastAccepted = compTime;
+                    }
+                }
+            }
+
+            // A problem is considered solved only if fully ACCEPTED
             List<Submission> accepted = submissionRepository.findBestAccepted(
                     competitionId, userId, problem.getId());
-
             if (!accepted.isEmpty()) {
-                Submission best = accepted.get(0);
-                totalScore += best.getScore();
                 solved++;
-                if (lastAccepted == null || best.getCompletedAt().isAfter(lastAccepted)) {
-                    lastAccepted = best.getCompletedAt();
-                }
             }
         }
 
@@ -94,6 +104,14 @@ public class LeaderboardService {
 
         log.info("[Leaderboard] competition={} user={} score={} solved={}",
                 competitionId, userId, totalScore, solved);
+    }
+
+    @Transactional
+    public void recalculateCompetition(Long competitionId) {
+        List<LeaderboardEntry> entries = leaderboardRepository.findByCompetitionIdOrdered(competitionId);
+        for (LeaderboardEntry entry : entries) {
+            recalculate(competitionId, entry.getUser().getId());
+        }
     }
 
     @Transactional(readOnly = true)

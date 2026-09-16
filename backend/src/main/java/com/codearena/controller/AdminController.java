@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import com.codearena.dto.LeaderboardDtos;
 import com.codearena.dto.CompetitionDtos;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
@@ -43,7 +45,9 @@ public class AdminController {
 
         Submission.Status statusEnum = null;
         if (status != null && !status.isBlank()) {
-            statusEnum = Submission.Status.valueOf(status.toUpperCase());
+            try {
+                statusEnum = Submission.Status.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
         }
 
         return ResponseEntity.ok(
@@ -67,6 +71,7 @@ public class AdminController {
     }
 
     @GetMapping("/competitions/{competitionId}/leaderboard/export")
+    @Transactional(readOnly = true)
     public ResponseEntity<String> exportLeaderboard(@PathVariable Long competitionId) throws IOException {
         LeaderboardDtos.LeaderboardResponse lb = leaderboardService.getLeaderboard(competitionId);
 
@@ -76,14 +81,16 @@ public class AdminController {
                 .build();
 
         try (CSVPrinter printer = new CSVPrinter(sw, format)) {
-            for (LeaderboardDtos.RankEntry entry : lb.entries()) {
-                printer.printRecord(
-                        entry.rank(),
-                        entry.username(),
-                        entry.totalScore(),
-                        entry.problemsSolved(),
-                        entry.lastAcceptedAt() != null ? entry.lastAcceptedAt().toString() : ""
-                );
+            if (lb != null && lb.entries() != null) {
+                for (LeaderboardDtos.RankEntry entry : lb.entries()) {
+                    printer.printRecord(
+                            entry.rank(),
+                            entry.username() != null ? entry.username() : "",
+                            entry.totalScore(),
+                            entry.problemsSolved(),
+                            entry.lastAcceptedAt() != null ? entry.lastAcceptedAt().toString() : ""
+                    );
+                }
             }
         }
 
@@ -95,8 +102,9 @@ public class AdminController {
     }
 
     @GetMapping("/competitions/{competitionId}/submissions/export")
+    @Transactional(readOnly = true)
     public ResponseEntity<String> exportSubmissions(@PathVariable Long competitionId) throws IOException {
-        var submissions = submissionRepository.findByCompetitionIdOrderByCreatedAtDesc(competitionId, org.springframework.data.domain.Pageable.unpaged());
+        List<Submission> submissions = submissionRepository.findByCompetitionIdWithUserAndProblemOrderByCreatedAtDesc(competitionId);
 
         StringWriter sw = new StringWriter();
         CSVFormat format = CSVFormat.DEFAULT.builder()
@@ -104,17 +112,17 @@ public class AdminController {
                 .build();
 
         try (CSVPrinter printer = new CSVPrinter(sw, format)) {
-            for (var s : submissions.getContent()) {
+            for (Submission s : submissions) {
                 printer.printRecord(
                         s.getId(),
-                        s.getUser().getUsername(),
-                        s.getProblem().getTitle(),
-                        s.getStatus().name(),
+                        s.getUser() != null ? s.getUser().getUsername() : "Unknown",
+                        s.getProblem() != null ? s.getProblem().getTitle() : "Unknown",
+                        s.getStatus() != null ? s.getStatus().name() : "",
                         s.getScore(),
-                        s.getLanguage(),
+                        s.getLanguage() != null ? s.getLanguage() : "",
                         s.getExecutionTimeMs(),
-                        s.getCreatedAt().toString(),
-                        s.getSourceCode()
+                        s.getCreatedAt() != null ? s.getCreatedAt().toString() : "",
+                        s.getSourceCode() != null ? s.getSourceCode() : ""
                 );
             }
         }

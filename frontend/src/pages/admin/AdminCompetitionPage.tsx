@@ -128,42 +128,63 @@ export default function AdminCompetitionPage() {
     }
   };
 
+  const downloadBlob = (data: BlobPart, filename: string, mimeType: string = 'text/csv;charset=utf-8;') => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const extractErrorMessage = async (err: any, defaultMsg: string) => {
+    if (err?.response?.data instanceof Blob) {
+      try {
+        const text = await err.response.data.text();
+        const json = JSON.parse(text);
+        return json.message || json.error || defaultMsg;
+      } catch {
+        // Not JSON
+      }
+    }
+    return err?.response?.data?.message || err?.message || defaultMsg;
+  };
+
   const handleExport = async () => {
     try {
+      setError('');
       const res = await leaderboardApi.exportCsv(Number(id));
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `leaderboard-${id}.csv`;
-      a.click();
-    } catch {
-      setError('Export failed');
+      downloadBlob(res.data, `leaderboard-${id}.csv`, 'text/csv');
+    } catch (err: any) {
+      const msg = await extractErrorMessage(err, 'Export leaderboard failed');
+      setError(msg);
     }
   };
 
   const handleExportSubmissions = async () => {
     try {
+      setError('');
       const res = await adminApi.exportSubmissionsCsv(Number(id));
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `submissions-${id}.csv`;
-      a.click();
-    } catch {
-      setError('Export failed');
+      downloadBlob(res.data, `submissions-${id}.csv`, 'text/csv');
+    } catch (err: any) {
+      const msg = await extractErrorMessage(err, 'Export submissions failed');
+      setError(msg);
     }
   };
 
   const handleExportParticipantsExcel = async () => {
     try {
+      setError('');
       const res = await competitionApi.exportParticipants(Number(id));
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `participants-${id}.xlsx`;
-      a.click();
-    } catch {
-      setError('Export participants failed');
+      downloadBlob(res.data, `participants-${id}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    } catch (err: any) {
+      const msg = await extractErrorMessage(err, 'Export participants failed');
+      setError(msg);
     }
   };
 
