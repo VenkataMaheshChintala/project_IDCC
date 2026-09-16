@@ -53,7 +53,7 @@ interface Problem {
   inputFormat: string;
   outputFormat: string;
   constraints: string;
-  difficulty: string;
+  difficulty?: never;
   points: number;
   timeLimitMs: number;
   memoryLimitMb: number;
@@ -529,7 +529,6 @@ export default function ProblemPage() {
                                 {p.title}
                               </span>
                               <div className="flex items-center gap-2">
-                                <StatusBadge status={p.difficulty} />
                               </div>
                             </div>
                             <div className="ml-3 flex-shrink-0">
@@ -574,7 +573,6 @@ export default function ProblemPage() {
           <span className="font-mono text-sm font-bold text-arena-accent w-8 text-center
                            bg-arena-accent/10 rounded px-2 py-0.5">{problem.slug}</span>
           <h1 className="font-semibold text-arena-text text-sm flex-1 truncate">{problem.title}</h1>
-          <StatusBadge status={problem.difficulty} />
           <span className="text-sm text-arena-muted font-mono">{problem.points} pts</span>
           <span className="text-xs text-arena-muted">{problem.timeLimitMs}ms | {problem.memoryLimitMb}MB</span>
         </div>

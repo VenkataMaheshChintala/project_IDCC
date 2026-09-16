@@ -54,11 +54,7 @@ export default function CompetitionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-arena-text flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-arena-accent" />
-            Competitions
-          </h1>
-          <p className="text-arena-text-dim text-sm mt-1">
+          <p className="text-arena-text-dim text-sm">
             {competitions.length} competition{competitions.length !== 1 ? 's' : ''} available
           </p>
         </div>

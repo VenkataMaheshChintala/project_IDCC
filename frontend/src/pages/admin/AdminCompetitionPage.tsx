@@ -356,7 +356,6 @@ export default function AdminCompetitionPage() {
                         <span className="text-base text-arena-text font-medium group-hover:text-arena-accent transition-colors">
                           {p.title}
                         </span>
-                        <StatusBadge status={p.difficulty} />
                       </div>
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-arena-muted font-mono bg-arena-bg px-2 py-1 rounded">{p.points} pts</span>

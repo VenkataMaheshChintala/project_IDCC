@@ -28,7 +28,7 @@ interface Problem {
   id: number;
   title: string;
   slug: string;
-  difficulty: string;
+  difficulty?: never;
   points: number;
   timeLimitMs: number;
   memoryLimitMb: number;
@@ -285,7 +285,6 @@ export default function CompetitionPage() {
                       <tr className="text-xs text-arena-muted uppercase tracking-wider">
                         <th className="text-left py-3 pr-6 font-medium w-8">#</th>
                         <th className="text-left py-3 pr-6 font-medium">Problem</th>
-                        <th className="text-left py-3 pr-6 font-medium hidden sm:table-cell">Difficulty</th>
                         <th className="text-center py-3 pr-6 font-medium">Status</th>
                         <th className="text-right py-3 pr-6 font-medium">Points</th>
                         <th className="text-right py-3 font-medium hidden md:table-cell">Limits</th>
@@ -308,9 +307,6 @@ export default function CompetitionPage() {
                             >
                               {p.title}
                             </Link>
-                          </td>
-                          <td className="py-4 pr-6 hidden sm:table-cell">
-                            <StatusBadge status={p.difficulty} />
                           </td>
                           <td className="py-4 pr-6 text-center">
                             {p.userStatus === 'SOLVED' ? (

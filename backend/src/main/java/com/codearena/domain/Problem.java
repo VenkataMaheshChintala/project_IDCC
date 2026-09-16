@@ -50,9 +50,6 @@ public class Problem {
     @Column(name = "c_runner_code", columnDefinition = "TEXT")
     private String cRunnerCode;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Difficulty difficulty;
 
     @Column(nullable = false)
     private int points;
@@ -80,5 +77,5 @@ public class Problem {
     @PreUpdate
     void preUpdate() { updatedAt = Instant.now(); }
 
-    public enum Difficulty { EASY, MEDIUM, HARD }
+
 }

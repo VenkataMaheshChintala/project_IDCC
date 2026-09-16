@@ -96,7 +96,6 @@ public class ProblemService {
                 .inputFormat(req.inputFormat())
                 .outputFormat(req.outputFormat())
                 .constraints(req.constraints())
-                .difficulty(req.difficulty() != null ? req.difficulty() : Problem.Difficulty.MEDIUM)
                 .points(req.points())
                 .timeLimitMs(req.timeLimitMs())
                 .memoryLimitMb(req.memoryLimitMb())
@@ -115,7 +114,6 @@ public class ProblemService {
         if (req.inputFormat() != null) p.setInputFormat(req.inputFormat());
         if (req.outputFormat() != null) p.setOutputFormat(req.outputFormat());
         if (req.constraints() != null) p.setConstraints(req.constraints());
-        if (req.difficulty() != null) p.setDifficulty(req.difficulty());
         if (req.points() != null) p.setPoints(req.points());
         if (req.timeLimitMs() != null) p.setTimeLimitMs(req.timeLimitMs());
         if (req.memoryLimitMb() != null) p.setMemoryLimitMb(req.memoryLimitMb());
@@ -184,7 +182,7 @@ public class ProblemService {
     private ProblemDtos.ProblemSummary toSummary(Problem p, String userStatus) {
         return new ProblemDtos.ProblemSummary(
                 p.getId(), p.getTitle(), p.getSlug(),
-                p.getDifficulty().name(), p.getPoints(),
+                p.getPoints(),
                 p.getTimeLimitMs(), p.getMemoryLimitMb(), userStatus
         );
     }
@@ -194,7 +192,7 @@ public class ProblemService {
                 p.getId(), p.getCompetition().getId(),
                 p.getTitle(), p.getSlug(),
                 p.getDescription(), p.getInputFormat(), p.getOutputFormat(), p.getConstraints(),
-                p.getStarterCode(), p.getCStarterCode(), p.getDifficulty().name(), p.getPoints(), p.getTimeLimitMs(), p.getMemoryLimitMb(),
+                p.getStarterCode(), p.getCStarterCode(), p.getPoints(), p.getTimeLimitMs(), p.getMemoryLimitMb(),
                 samples.stream().map(tc -> new TestCaseDtos.SampleTestCaseResponse(
                         tc.getId(), tc.getInput(), tc.getExpectedOutput(), tc.getOrderIndex()
                 )).toList(),
@@ -207,7 +205,7 @@ public class ProblemService {
                 p.getId(), p.getCompetition().getId(),
                 p.getTitle(), p.getSlug(),
                 p.getDescription(), p.getInputFormat(), p.getOutputFormat(), p.getConstraints(),
-                p.getStarterCode(), p.getRunnerCode(), p.getCStarterCode(), p.getCRunnerCode(), p.getDifficulty().name(), p.getPoints(), p.getTimeLimitMs(), p.getMemoryLimitMb(),
+                p.getStarterCode(), p.getRunnerCode(), p.getCStarterCode(), p.getCRunnerCode(), p.getPoints(), p.getTimeLimitMs(), p.getMemoryLimitMb(),
                 all.stream().map(this::toAdminTestCase).toList(),
                 p.getCreatedAt(), p.getUpdatedAt()
         );

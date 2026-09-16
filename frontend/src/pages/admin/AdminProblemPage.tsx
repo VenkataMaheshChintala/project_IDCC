@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { problemApi, competitionApi } from '../../api/endpoints';
-import { StatusBadge } from '../../components/StatusBadge';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, GripVertical } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
 
 export default function AdminProblemPage() {
   const { id: problemId } = useParams<{ id: string }>();
@@ -21,7 +19,7 @@ export default function AdminProblemPage() {
   const [testCases, setTestCases] = useState<any[]>([]);
   const [form, setForm] = useState({
     title: '', slug: '', description: '', inputFormat: '', outputFormat: '',
-    constraints: '', difficulty: 'MEDIUM', points: 100, timeLimitMs: 2000, memoryLimitMb: 256
+    constraints: '', points: 100, timeLimitMs: 2000, memoryLimitMb: 256
   });
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -47,7 +45,6 @@ export default function AdminProblemPage() {
           inputFormat: p.inputFormat || '',
           outputFormat: p.outputFormat || '',
           constraints: p.constraints || '',
-          difficulty: p.difficulty || 'MEDIUM',
           points: p.points || 100,
           timeLimitMs: p.timeLimitMs || 2000,
           memoryLimitMb: p.memoryLimitMb || 256
@@ -132,7 +129,6 @@ export default function AdminProblemPage() {
         <h1 className="text-xl font-bold text-arena-text">
           {isNew ? 'New Problem' : `Edit: ${problem?.title}`}
         </h1>
-        {problem && <StatusBadge status={problem.difficulty} />}
       </div>
 
       {error && <div className="mb-4 px-4 py-3 bg-arena-red/10 border border-arena-red/30 rounded-lg text-arena-red text-sm">{error}</div>}
@@ -220,14 +216,7 @@ export default function AdminProblemPage() {
               className="input min-h-16 resize-y text-xs" placeholder="- 1 ≤ n ≤ 10⁵" />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm text-arena-text-dim mb-1.5">Difficulty</label>
-              <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value }))}
-                className="input">
-                {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-arena-text-dim mb-1.5">Time Limit (ms)</label>
               <input type="number" value={form.timeLimitMs} min={100}

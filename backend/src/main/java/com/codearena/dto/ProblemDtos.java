@@ -1,6 +1,5 @@
 package com.codearena.dto;
 
-import com.codearena.domain.Problem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 
@@ -16,7 +15,6 @@ public class ProblemDtos {
             String inputFormat,
             String outputFormat,
             String constraints,
-            Problem.Difficulty difficulty,
             @Positive int points,
             @Positive int timeLimitMs,
             @Positive int memoryLimitMb
@@ -34,7 +32,6 @@ public class ProblemDtos {
             String inputFormat,
             String outputFormat,
             String constraints,
-            Problem.Difficulty difficulty,
             Integer points,
             Integer timeLimitMs,
             Integer memoryLimitMb
@@ -51,7 +48,6 @@ public class ProblemDtos {
             String constraints,
             String starterCode,
             String cStarterCode,
-            String difficulty,
             int points,
             int timeLimitMs,
             int memoryLimitMb,
@@ -64,7 +60,6 @@ public class ProblemDtos {
             Long id,
             String title,
             String slug,
-            String difficulty,
             int points,
             int timeLimitMs,
             int memoryLimitMb,
@@ -85,7 +80,6 @@ public class ProblemDtos {
             String runnerCode,
             String cStarterCode,
             String cRunnerCode,
-            String difficulty,
             int points,
             int timeLimitMs,
             int memoryLimitMb,

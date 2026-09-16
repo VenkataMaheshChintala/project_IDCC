@@ -34,16 +34,6 @@ export function Navbar() {
         {/* Nav Links */}
         {user && (
           <div className="hidden md:flex items-center gap-1">
-            <Link to="/competitions"
-              className={`nav-link text-sm ${isActive('/competitions')}`}>
-              <Trophy className="w-4 h-4" />
-              Competitions
-            </Link>
-            <Link to="/submissions"
-              className={`nav-link text-sm ${isActive('/submissions')}`}>
-              <ClipboardList className="w-4 h-4" />
-              Submissions
-            </Link>
             {isAdmin && (
               <Link to="/admin"
                 className={`nav-link text-sm ${isActive('/admin')}`}>
