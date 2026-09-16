@@ -5,6 +5,7 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, Pencil, Check, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 export default function AdminProblemPage() {
   const { id: problemId } = useParams<{ id: string }>();
@@ -234,7 +235,7 @@ export default function AdminProblemPage() {
             ) : (
               <div className="input min-h-40 p-4 overflow-y-auto prose-arena bg-arena-bg/60">
                 {form.description ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.description}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{form.description}</ReactMarkdown>
                 ) : (
                   <span className="text-arena-muted italic">Nothing to preview.</span>
                 )}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { problemApi, submissionApi, competitionApi } from '../api/endpoints';
 import { StatusBadge } from '../components/StatusBadge';
 import {
@@ -582,27 +583,27 @@ export default function ProblemPage() {
         {/* Left: Problem statement */}
         <div className="w-[45%] overflow-y-auto border-r border-arena-border p-5 prose-arena">
           {problem.description && (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.description}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{problem.description}</ReactMarkdown>
           )}
 
           {problem.inputFormat && (
             <div className="mt-4">
               <h3 className="text-arena-text font-semibold text-sm mb-1">Input Format</h3>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.inputFormat}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{problem.inputFormat}</ReactMarkdown>
             </div>
           )}
 
           {problem.outputFormat && (
             <div className="mt-4">
               <h3 className="text-arena-text font-semibold text-sm mb-1">Output Format</h3>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.outputFormat}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{problem.outputFormat}</ReactMarkdown>
             </div>
           )}
 
           {problem.constraints && (
             <div className="mt-4">
               <h3 className="text-arena-text font-semibold text-sm mb-1">Constraints</h3>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.constraints}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{problem.constraints}</ReactMarkdown>
             </div>
           )}
 
