@@ -42,6 +42,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  // Heartbeat to keep the Redis session alive and detect invalidation
+  useEffect(() => {
+    if (!token) return;
+    
+    const interval = setInterval(() => {
+      authApi.me().catch(() => {});
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [token]);
+
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));

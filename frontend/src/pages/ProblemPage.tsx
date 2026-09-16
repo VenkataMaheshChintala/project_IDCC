@@ -118,6 +118,12 @@ export default function ProblemPage() {
   const { isAdmin } = useAuth();
 
   useEffect(() => {
+    // Clear terminal/console results when switching questions
+    setRunResult(null);
+    setSubmission(null);
+    setActiveTab('input');
+    setCustomInput('');
+
     const savedJava = localStorage.getItem(`code-draft-${problemId}-JAVA`);
     const savedC = localStorage.getItem(`code-draft-${problemId}-C`);
 

@@ -58,13 +58,16 @@ export function CompetitionTimer({ serverTime, status, attemptStartedAt, timeLim
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  const isUrgent = phase === 'live' && timeLeft < '00:05:00' && timeLeft > '00:00:00';
   const color = phase === 'live'
-    ? timeLeft < '00:30:00' ? 'text-arena-red' : 'text-arena-green'
+    ? isUrgent ? 'text-arena-red' : 'text-arena-green'
     : 'text-arena-muted';
 
   return (
-    <div className={`flex items-center gap-2 font-mono text-lg font-bold ${color}`}>
-      <Clock className="w-5 h-5" />
+    <div className={`flex items-center gap-2 font-mono text-lg font-bold transition-all duration-300 ${color} ${
+      isUrgent ? 'animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] scale-105' : ''
+    }`}>
+      <Clock className={`w-5 h-5 ${isUrgent ? 'animate-bounce' : ''}`} />
       <span>{timeLeft}</span>
     </div>
   );

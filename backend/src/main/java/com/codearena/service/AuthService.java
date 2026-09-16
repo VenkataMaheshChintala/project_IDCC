@@ -11,6 +11,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
@@ -49,14 +52,24 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.teamName(), request.password())
         );
 
+        String sessionKey = "session:" + request.teamName();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey))) {
+            throw new ConflictException("Account is already logged in on another device.");
+        }
+
         User user = userRepository.findByUsername(request.teamName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String token = jwtService.generateToken(user);
+        
+        redisTemplate.opsForValue().set(sessionKey, token, Duration.ofSeconds(30));
+        
         return buildAuthResponse(token, user);
     }
 
     public AuthDtos.UserDto me(User user) {
+        String sessionKey = "session:" + user.getUsername();
+        redisTemplate.expire(sessionKey, Duration.ofSeconds(30));
         return toUserDto(user);
     }
 
