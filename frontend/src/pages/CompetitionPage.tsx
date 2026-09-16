@@ -286,7 +286,6 @@ export default function CompetitionPage() {
                         <th className="text-left py-3 pr-6 font-medium w-8">#</th>
                         <th className="text-left py-3 pr-6 font-medium">Problem</th>
                         <th className="text-center py-3 pr-6 font-medium">Status</th>
-                        <th className="text-right py-3 pr-6 font-medium">Points</th>
                         <th className="text-right py-3 font-medium hidden md:table-cell">Limits</th>
                       </tr>
                     </thead>
@@ -320,10 +319,6 @@ export default function CompetitionPage() {
                             ) : (
                               <span className="text-arena-muted text-xs font-medium">-</span>
                             )}
-                          </td>
-                          <td className="py-4 pr-6 text-right">
-                            <span className="text-arena-text font-mono text-sm font-semibold">{p.points}</span>
-                            <span className="text-arena-muted text-xs ml-1">pts</span>
                           </td>
                           <td className="py-4 text-right hidden md:table-cell">
                             <span className="text-arena-muted text-xs">

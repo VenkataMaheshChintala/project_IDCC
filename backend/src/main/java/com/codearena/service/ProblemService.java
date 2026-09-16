@@ -161,6 +161,22 @@ public class ProblemService {
         testCaseRepository.delete(tc);
     }
 
+    @Transactional
+    public TestCaseDtos.TestCaseAdminResponse updateTestCase(Long testCaseId, TestCaseDtos.UpdateRequest req) {
+        TestCase tc = testCaseRepository.findById(testCaseId)
+                .orElseThrow(() -> new NotFoundException("Test case not found: " + testCaseId));
+
+        if (req.input() != null)          tc.setInput(req.input());
+        if (req.expectedOutput() != null) tc.setExpectedOutput(req.expectedOutput());
+        if (req.sample() != null)         tc.setSample(req.sample());
+        if (req.hidden() != null)         tc.setHidden(req.hidden());
+        if (req.points() != null)         tc.setPoints(req.points());
+        if (req.orderIndex() != null)     tc.setOrderIndex(req.orderIndex());
+
+        tc = testCaseRepository.save(tc);
+        return toAdminTestCase(tc);
+    }
+
     public List<TestCase> getHiddenTestCases(Long problemId) {
         return testCaseRepository.findByProblemIdOrderByOrderIndexAsc(problemId)
                 .stream()

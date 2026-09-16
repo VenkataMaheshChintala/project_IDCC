@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { problemApi, competitionApi } from '../../api/endpoints';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { problemApi } from '../../api/endpoints';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, GripVertical } from 'lucide-react';
+import { Plus, Save, Trash2, ChevronLeft, Eye, EyeOff, Pencil, Check, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
 
 export default function AdminProblemPage() {
   const { id: problemId } = useParams<{ id: string }>();
@@ -19,7 +18,7 @@ export default function AdminProblemPage() {
   const [testCases, setTestCases] = useState<any[]>([]);
   const [form, setForm] = useState({
     title: '', slug: '', description: '', inputFormat: '', outputFormat: '',
-    constraints: '', points: 100, timeLimitMs: 2000, memoryLimitMb: 256
+    constraints: '', points: 0, timeLimitMs: 2000, memoryLimitMb: 256
   });
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -33,6 +32,15 @@ export default function AdminProblemPage() {
   const [showDeleteProblemModal, setShowDeleteProblemModal] = useState(false);
   const [deleteTcId, setDeleteTcId] = useState<number | null>(null);
 
+  // Inline edit state
+  const [editingTcId, setEditingTcId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [savingTc, setSavingTc] = useState(false);
+
+  // Derived total points = sum of saved test case points + what admin is currently typing in "add" form
+  const savedPoints = useMemo(() => testCases.reduce((s, tc) => s + (tc.points || 0), 0), [testCases]);
+  const derivedPoints = savedPoints + (newTestCase.points || 0);
+
   useEffect(() => {
     if (!isNew) {
       problemApi.get(Number(problemId)).then((p: any) => {
@@ -45,7 +53,7 @@ export default function AdminProblemPage() {
           inputFormat: p.inputFormat || '',
           outputFormat: p.outputFormat || '',
           constraints: p.constraints || '',
-          points: p.points || 100,
+          points: p.points || 0,
           timeLimitMs: p.timeLimitMs || 2000,
           memoryLimitMb: p.memoryLimitMb || 256
         });
@@ -59,12 +67,14 @@ export default function AdminProblemPage() {
     setError('');
     setSuccess('');
     try {
+      // Sync stored points with the sum of existing test case points
+      const payload = { ...form, points: savedPoints };
       if (isNew) {
         if (!compId) { setError('Missing competitionId'); return; }
-        const created = await problemApi.create(Number(compId), form);
+        const created = await problemApi.create(Number(compId), payload);
         navigate(`/admin/problems/${created.id}`);
       } else {
-        await problemApi.update(Number(problemId), form);
+        await problemApi.update(Number(problemId), payload);
         setSuccess('Problem saved successfully');
         setTimeout(() => setSuccess(''), 3000);
       }
@@ -98,7 +108,12 @@ export default function AdminProblemPage() {
         ...newTestCase,
         orderIndex: testCases.length + 1
       });
-      setTestCases(prev => [...prev, tc]);
+      const updatedTcs = [...testCases, tc];
+      setTestCases(updatedTcs);
+      // Sync problem points with the new total
+      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+      await problemApi.update(Number(problemId), { ...form, points: newTotal });
+      setForm(f => ({ ...f, points: newTotal }));
       setNewTestCase({ input: '', expectedOutput: '', sample: false, hidden: true, points: 0, orderIndex: 0 });
       setSuccess('Test case added');
       setTimeout(() => setSuccess(''), 2000);
@@ -112,9 +127,45 @@ export default function AdminProblemPage() {
   const handleDeleteTC = async (tcId: number) => {
     try {
       await problemApi.deleteTestCase(tcId);
-      setTestCases(prev => prev.filter(tc => tc.id !== tcId));
+      const updatedTcs = testCases.filter(tc => tc.id !== tcId);
+      setTestCases(updatedTcs);
+      // Sync problem points with the new total
+      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+      await problemApi.update(Number(problemId), { ...form, points: newTotal });
+      setForm(f => ({ ...f, points: newTotal }));
     } catch (err: any) {
       setError('Failed to delete test case');
+    }
+  };
+
+  const startEditTc = (tc: any) => {
+    setEditingTcId(tc.id);
+    setEditForm({ input: tc.input, expectedOutput: tc.expectedOutput, points: tc.points, sample: tc.sample, hidden: tc.hidden });
+  };
+
+  const cancelEditTc = () => {
+    setEditingTcId(null);
+    setEditForm({});
+  };
+
+  const handleUpdateTC = async (tcId: number) => {
+    setSavingTc(true);
+    try {
+      const updated = await problemApi.updateTestCase(tcId, editForm);
+      const updatedTcs = testCases.map(tc => tc.id === tcId ? updated : tc);
+      setTestCases(updatedTcs);
+      // Sync problem points
+      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+      await problemApi.update(Number(problemId), { ...form, points: newTotal });
+      setForm(f => ({ ...f, points: newTotal }));
+      setEditingTcId(null);
+      setEditForm({});
+      setSuccess('Test case updated');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update test case');
+    } finally {
+      setSavingTc(false);
     }
   };
 
@@ -199,13 +250,13 @@ export default function AdminProblemPage() {
               <label className="block text-sm text-arena-text-dim mb-1.5">Input Format (Markdown)</label>
               <textarea value={form.inputFormat}
                 onChange={e => setForm(f => ({ ...f, inputFormat: e.target.value }))}
-                className="input min-h-20 resize-y text-xs" placeholder="Line 1: n..." />
+                className="input min-h-20 resize-y text-xs font-mono whitespace-pre-wrap" placeholder="Line 1: n..." />
             </div>
             <div>
               <label className="block text-sm text-arena-text-dim mb-1.5">Output Format (Markdown)</label>
               <textarea value={form.outputFormat}
                 onChange={e => setForm(f => ({ ...f, outputFormat: e.target.value }))}
-                className="input min-h-20 resize-y text-xs" placeholder="A single integer..." />
+                className="input min-h-20 resize-y text-xs font-mono whitespace-pre-wrap" placeholder="A single integer..." />
             </div>
           </div>
 
@@ -213,7 +264,7 @@ export default function AdminProblemPage() {
             <label className="block text-sm text-arena-text-dim mb-1.5">Constraints (Markdown)</label>
             <textarea value={form.constraints}
               onChange={e => setForm(f => ({ ...f, constraints: e.target.value }))}
-              className="input min-h-16 resize-y text-xs" placeholder="- 1 ≤ n ≤ 10⁵" />
+              className="input min-h-16 resize-y text-xs font-mono whitespace-pre-wrap" placeholder="- 1 ≤ n ≤ 10⁵" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -231,7 +282,7 @@ export default function AdminProblemPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-2 items-center">
             <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : isNew ? 'Create Problem' : 'Save'}
@@ -248,35 +299,113 @@ export default function AdminProblemPage() {
         {/* Test Cases (only after problem is created) */}
         {!isNew && (
           <div className="card">
-            <h2 className="font-semibold text-arena-text mb-4">Test Cases ({testCases.length})</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-arena-text">Test Cases ({testCases.length})</h2>
+              {/* Live derived total points */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-arena-muted">Total Points:</span>
+                <span className="badge bg-arena-accent/15 text-arena-accent border border-arena-accent/30 text-sm font-bold">
+                  {derivedPoints} pts
+                </span>
+              </div>
+            </div>
 
             {/* Existing test cases */}
             {testCases.length > 0 && (
               <div className="space-y-3 mb-6">
                 {testCases.map((tc, i) => (
                   <div key={tc.id} className="bg-arena-bg border border-arena-border rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1}</span>
-                        <span className="badge bg-arena-accent/10 text-arena-accent border border-arena-accent/20">{tc.points} pts</span>
-                        {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
-                        {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
+                    {editingTcId === tc.id ? (
+                      /* ── Edit mode ── */
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1} — editing</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleUpdateTC(tc.id)}
+                              disabled={savingTc}
+                              className="flex items-center gap-1 text-xs px-2.5 py-1 bg-arena-green/10 text-arena-green border border-arena-green/30 rounded-md hover:bg-arena-green/20 transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              {savingTc ? 'Saving...' : 'Save'}
+                            </button>
+                            <button onClick={cancelEditTc} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-arena-surface text-arena-muted border border-arena-border rounded-md hover:text-arena-text transition-colors">
+                              <X className="w-3.5 h-3.5" /> Cancel
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-arena-muted mb-1 block">Input</label>
+                            <textarea
+                              value={editForm.input}
+                              onChange={e => setEditForm((f: any) => ({ ...f, input: e.target.value }))}
+                              className="input min-h-20 resize-y font-mono text-xs whitespace-pre-wrap"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-arena-muted mb-1 block">Expected Output</label>
+                            <textarea
+                              value={editForm.expectedOutput}
+                              onChange={e => setEditForm((f: any) => ({ ...f, expectedOutput: e.target.value }))}
+                              className="input min-h-20 resize-y font-mono text-xs whitespace-pre-wrap"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div>
+                            <label className="text-xs text-arena-muted mb-1 block">Points</label>
+                            <input type="number" value={editForm.points} min={0}
+                              onChange={e => setEditForm((f: any) => ({ ...f, points: Number(e.target.value) }))}
+                              className="input py-1 px-2 text-xs w-24" />
+                          </div>
+                          <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-4">
+                            <input type="checkbox" checked={editForm.sample}
+                              onChange={e => setEditForm((f: any) => ({ ...f, sample: e.target.checked }))}
+                              className="rounded" />
+                            Sample
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-4">
+                            <input type="checkbox" checked={editForm.hidden}
+                              onChange={e => setEditForm((f: any) => ({ ...f, hidden: e.target.checked }))}
+                              className="rounded" />
+                            Hidden
+                          </label>
+                        </div>
                       </div>
-                      <button onClick={() => setDeleteTcId(tc.id)}
-                        className="text-arena-red/50 hover:text-arena-red transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                      <div>
-                        <p className="text-arena-muted mb-1">Input</p>
-                        <pre className="bg-arena-surface border border-arena-border rounded p-2 text-arena-text overflow-x-auto whitespace-pre-wrap max-h-24">{tc.input}</pre>
-                      </div>
-                      <div>
-                        <p className="text-arena-muted mb-1">Expected Output</p>
-                        <pre className="bg-arena-surface border border-arena-border rounded p-2 text-arena-text overflow-x-auto whitespace-pre-wrap max-h-24">{tc.expectedOutput}</pre>
-                      </div>
-                    </div>
+                    ) : (
+                      /* ── View mode ── */
+                      <>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1}</span>
+                            <span className="badge bg-arena-accent/10 text-arena-accent border border-arena-accent/20">{tc.points} pts</span>
+                            {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
+                            {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => startEditTc(tc)}
+                              className="text-arena-muted hover:text-arena-accent transition-colors" title="Edit test case">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setDeleteTcId(tc.id)}
+                              className="text-arena-red/50 hover:text-arena-red transition-colors" title="Delete test case">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                          <div>
+                            <p className="text-arena-muted mb-1">Input</p>
+                            <pre className="bg-arena-surface border border-arena-border rounded p-2 text-arena-text overflow-x-auto whitespace-pre-wrap max-h-24">{tc.input}</pre>
+                          </div>
+                          <div>
+                            <p className="text-arena-muted mb-1">Expected Output</p>
+                            <pre className="bg-arena-surface border border-arena-border rounded p-2 text-arena-text overflow-x-auto whitespace-pre-wrap max-h-24">{tc.expectedOutput}</pre>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -290,13 +419,13 @@ export default function AdminProblemPage() {
                   <label className="text-xs text-arena-muted mb-1 block">Input</label>
                   <textarea value={newTestCase.input}
                     onChange={e => setNewTestCase(t => ({ ...t, input: e.target.value }))}
-                    className="input min-h-24 resize-y font-mono text-xs" placeholder="Test input..." />
+                    className="input min-h-24 resize-y font-mono text-xs whitespace-pre-wrap" placeholder="Test input..." />
                 </div>
                 <div>
                   <label className="text-xs text-arena-muted mb-1 block">Expected Output</label>
                   <textarea value={newTestCase.expectedOutput}
                     onChange={e => setNewTestCase(t => ({ ...t, expectedOutput: e.target.value }))}
-                    className="input min-h-24 resize-y font-mono text-xs" placeholder="Expected output..." />
+                    className="input min-h-24 resize-y font-mono text-xs whitespace-pre-wrap" placeholder="Expected output..." />
                 </div>
               </div>
               <div className="flex items-center gap-6">

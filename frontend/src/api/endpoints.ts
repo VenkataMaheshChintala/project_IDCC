@@ -36,6 +36,8 @@ export const problemApi = {
   addTestCase: (problemId: number, data: any) =>
     api.post(`/problems/${problemId}/test-cases`, data).then(r => r.data),
   deleteTestCase: (testCaseId: number) => api.delete(`/test-cases/${testCaseId}`),
+  updateTestCase: (testCaseId: number, data: any) =>
+    api.patch(`/test-cases/${testCaseId}`, data).then((r: any) => r.data),
   saveDraft: (problemId: number, data: { language: string; sourceCode: string }) =>
     api.post(`/problems/${problemId}/draft`, data),
   getDraft: (problemId: number, language: string) =>

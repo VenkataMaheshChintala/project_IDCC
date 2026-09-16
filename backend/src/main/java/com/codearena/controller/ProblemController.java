@@ -104,4 +104,12 @@ public class ProblemController {
         problemService.deleteTestCase(testCaseId);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/api/test-cases/{testCaseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TestCaseDtos.TestCaseAdminResponse> updateTestCase(
+            @PathVariable Long testCaseId,
+            @RequestBody TestCaseDtos.UpdateRequest req) {
+        return ResponseEntity.ok(problemService.updateTestCase(testCaseId, req));
+    }
 }
