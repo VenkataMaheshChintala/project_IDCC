@@ -163,13 +163,14 @@ public class AdminController {
         entityManager.createNativeQuery("TRUNCATE competition_participants CASCADE").executeUpdate();
         entityManager.createNativeQuery("DELETE FROM users WHERE role != 'ADMIN'").executeUpdate();
 
-        // Flush Redis (clear active session keys)
+        // Clear active session keys only (don't flush streams used by judge-worker)
         try {
-            var connection = stringRedisTemplate.getConnectionFactory().getConnection();
-            connection.serverCommands().flushAll();
-            connection.close();
+            var keys = stringRedisTemplate.keys("session:*");
+            if (keys != null && !keys.isEmpty()) {
+                stringRedisTemplate.delete(keys);
+            }
         } catch (Exception ignored) {
-            // Redis flush is best-effort
+            // Redis cleanup is best-effort
         }
 
         return ResponseEntity.ok(Map.of(

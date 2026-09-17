@@ -88,15 +88,29 @@ public class QueueConsumer {
 
     private void consumeLoop(String stream, String consumer, boolean submission) {
         reclaimPending(stream, consumer, submission);
+        long backoffMs = 0;
+        final long MAX_BACKOFF_MS = 5000;
         while (running.get()) {
             try {
+                if (backoffMs > 0) {
+                    Thread.sleep(backoffMs);
+                }
                 List<MapRecord<String, Object, Object>> records = redis.opsForStream().read(
                         Consumer.from(streamGroup, consumer), StreamReadOptions.empty().count(1).block(Duration.ofSeconds(2)),
                         StreamOffset.create(stream, ReadOffset.lastConsumed()));
+                backoffMs = 0; // Reset on success
                 if (records == null) continue;
                 for (MapRecord<String, Object, Object> record : records) process(record, stream, submission);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
             } catch (Exception e) {
-                if (running.get()) log.warn("Stream poll failed for {}: {}", stream, e.getMessage());
+                if (running.get()) {
+                    backoffMs = Math.min(backoffMs == 0 ? 500 : backoffMs * 2, MAX_BACKOFF_MS);
+                    log.warn("Stream poll failed for {} (retry in {}ms): {}", stream, backoffMs, e.getMessage());
+                    // Try to re-create the consumer group in case Redis was flushed
+                    try { createGroup(stream); } catch (Exception ignored) {}
+                }
             }
         }
     }
