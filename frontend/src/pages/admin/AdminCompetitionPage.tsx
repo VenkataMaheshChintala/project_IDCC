@@ -6,7 +6,7 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import {
   Plus, Save, Trash2, Download, ChevronLeft,
   ExternalLink, Calendar, FileText, Settings, Info, Award,
-  User, X
+  User, X, RotateCw
 } from 'lucide-react';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
@@ -526,16 +526,29 @@ export default function AdminCompetitionPage() {
 function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [participantDetails, setParticipantDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  useEffect(() => {
+  const fetchLeaderboard = (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
     import('../../api/endpoints').then(({ leaderboardApi }) =>
-      leaderboardApi.get(competitionId).then(setData).finally(() => setLoading(false))
+      leaderboardApi.get(competitionId)
+        .then(setData)
+        .finally(() => {
+          setLoading(false);
+          setRefreshing(false);
+        })
     );
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
   }, [competitionId]);
 
   const openParticipantDetails = (userId: number) => {
@@ -553,26 +566,38 @@ function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
     setParticipantDetails(null);
   };
 
-  if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading && !data) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="card animate-fade-in border-l-4 border-l-yellow-500">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
           <Award className="w-5 h-5 text-yellow-500" />
           Live Leaderboard
         </h2>
-        {data?.entries?.length > 0 && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search team name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {data?.entries?.length > 0 && (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search team name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pr-3 py-1.5 text-sm w-64 bg-arena-bg"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fetchLeaderboard(true)}
+            disabled={refreshing || loading}
+            className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-3 bg-arena-bg hover:bg-arena-surface border border-arena-border text-arena-text disabled:opacity-50 transition-colors"
+            title="Refresh Leaderboard"
+          >
+            <RotateCw className={`w-3.5 h-3.5 text-arena-muted ${refreshing ? 'animate-spin text-arena-accent' : ''}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
       </div>
       {!data?.entries?.length ? (
         <div className="text-center py-10 border-2 border-dashed border-arena-border rounded-lg bg-arena-bg">
@@ -725,17 +750,29 @@ function AdminLeaderboardTab({ competitionId }: { competitionId: number }) {
 function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [submissionDetails, setSubmissionDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
+  const fetchSubmissions = (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
     import('../../api/endpoints').then(({ adminApi }) =>
-      adminApi.getSubmissions({ competitionId, page }).then(setData).finally(() => setLoading(false))
+      adminApi.getSubmissions({ competitionId, page })
+        .then(setData)
+        .finally(() => {
+          setLoading(false);
+          setRefreshing(false);
+        })
     );
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
   }, [competitionId, page]);
 
   const handleViewClick = (id: number) => {
@@ -750,22 +787,34 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
 
   return (
     <div className="card animate-fade-in border-l-4 border-l-blue-500">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
           <FileText className="w-5 h-5 text-blue-500" />
           Participant Submissions
         </h2>
-        {data?.content?.length > 0 && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search team name on page..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {data?.content?.length > 0 && (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search team name on page..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pr-3 py-1.5 text-sm w-64 bg-arena-bg"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fetchSubmissions(true)}
+            disabled={refreshing || loading}
+            className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-3 bg-arena-bg hover:bg-arena-surface border border-arena-border text-arena-text disabled:opacity-50 transition-colors"
+            title="Refresh Submissions"
+          >
+            <RotateCw className={`w-3.5 h-3.5 text-arena-muted ${refreshing ? 'animate-spin text-arena-accent' : ''}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
       </div>
 
       {!data?.content?.length ? (
@@ -948,12 +997,21 @@ function AdminSubmissionsTab({ competitionId }: { competitionId: number }) {
 function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [resuming, setResuming] = useState<number | null>(null);
 
-  const fetchParticipants = () => {
+  const fetchParticipants = (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
     import('../../api/endpoints').then(({ adminApi }) =>
-      adminApi.getParticipants(competitionId).then(setParticipants).finally(() => setLoading(false))
+      adminApi.getParticipants(competitionId)
+        .then(setParticipants)
+        .finally(() => {
+          setLoading(false);
+          setRefreshing(false);
+        })
     );
   };
 
@@ -966,7 +1024,7 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
     try {
       const { adminApi } = await import('../../api/endpoints');
       await adminApi.resumeParticipant(competitionId, userId);
-      fetchParticipants();
+      fetchParticipants(true);
     } catch (err) {
       console.error('Failed to resume participant', err);
     } finally {
@@ -974,26 +1032,38 @@ function AdminParticipantsTab({ competitionId }: { competitionId: number }) {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading && !participants.length) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-arena-accent border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="card animate-fade-in border-l-4 border-l-arena-accent">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-arena-text flex items-center gap-2">
           <Info className="w-5 h-5 text-arena-accent" />
           Participants
         </h2>
-        {participants.length > 0 && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search team name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pr-10 py-1.5 text-sm w-64 bg-arena-bg"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {participants.length > 0 && (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search team name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pr-3 py-1.5 text-sm w-64 bg-arena-bg"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fetchParticipants(true)}
+            disabled={refreshing || loading}
+            className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-3 bg-arena-bg hover:bg-arena-surface border border-arena-border text-arena-text disabled:opacity-50 transition-colors"
+            title="Refresh Participants"
+          >
+            <RotateCw className={`w-3.5 h-3.5 text-arena-muted ${refreshing ? 'animate-spin text-arena-accent' : ''}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
       </div>
       {!participants.length ? (
         <div className="text-center py-10 border-2 border-dashed border-arena-border rounded-lg bg-arena-bg">

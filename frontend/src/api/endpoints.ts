@@ -75,4 +75,6 @@ export const adminApi = {
     api.post(`/admin/competitions/${competitionId}/participants/${userId}/resume`),
   exportSubmissionsCsv: (competitionId: number) =>
     api.get(`/admin/competitions/${competitionId}/submissions/export`, { responseType: 'blob' }),
+  resetParticipantData: () =>
+    api.post('/admin/reset-participant-data').then(r => r.data),
 };

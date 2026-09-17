@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { adminApi, competitionApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardList, Filter, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 
 const STATUSES = ['', 'QUEUED', 'RUNNING', 'ACCEPTED', 'WRONG_ANSWER', 'COMPILATION_ERROR',
   'RUNTIME_ERROR', 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 'SYSTEM_ERROR'];
@@ -12,14 +12,24 @@ export default function AdminSubmissionsPage() {
   const [competitions, setCompetitions] = useState<any[]>([]);
   const [filters, setFilters] = useState({ competitionId: '', status: '', page: 0 });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = (f = filters) => {
-    setLoading(true);
+  const load = (f = filters, isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     adminApi.getSubmissions({
       competitionId: f.competitionId || undefined,
       status: f.status || undefined,
       page: f.page
-    }).then(setSubmissions).finally(() => setLoading(false));
+    })
+      .then(setSubmissions)
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   };
 
   useEffect(() => {
@@ -40,10 +50,21 @@ export default function AdminSubmissionsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-xl font-bold text-arena-text flex items-center gap-2 mb-6">
-        <ClipboardList className="w-5 h-5 text-arena-accent" />
-        All Submissions
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-arena-text flex items-center gap-2">
+          <ClipboardList className="w-5 h-5 text-arena-accent" />
+          All Submissions
+        </h1>
+        <button
+          onClick={() => load(filters, true)}
+          disabled={loading || refreshing}
+          className="btn-secondary flex items-center gap-2 text-sm py-1.5"
+          title="Refresh submissions"
+        >
+          <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-arena-accent' : ''}`} />
+          Refresh
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="card mb-6 flex flex-wrap items-end gap-4">

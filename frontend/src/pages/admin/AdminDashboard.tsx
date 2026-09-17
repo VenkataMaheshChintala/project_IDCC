@@ -4,15 +4,17 @@ import { competitionApi, problemApi, adminApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
 import {
   LayoutDashboard, Trophy, ClipboardList, Users,
-  CheckCircle2, XCircle, Clock, Activity, Plus, Settings
+  CheckCircle2, XCircle, Clock, Activity, Plus, Settings, Trash2, RotateCw
 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [competitions, setCompetitions] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
     Promise.all([
       competitionApi.list(),
       adminApi.getSubmissions({ page: 0 }).catch(() => null)
@@ -20,7 +22,49 @@ export default function AdminDashboard() {
       setCompetitions(comps);
       setSubmissions(subs);
     }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleReset = async () => {
+    const firstConfirm = window.confirm(
+      '⚠️ This will permanently delete ALL participant data:\n\n' +
+      '• All participant accounts\n' +
+      '• All submissions & test results\n' +
+      '• All leaderboard entries\n' +
+      '• All competition registrations\n\n' +
+      'Competitions, problems, and test cases will be KEPT.\n\n' +
+      'Are you sure?'
+    );
+    if (!firstConfirm) return;
+
+    const typed = window.prompt(
+      'Type RESET to confirm deletion of all participant data:'
+    );
+    if (typed !== 'RESET') {
+      if (typed !== null) alert('Reset cancelled — you must type exactly "RESET".');
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const result = await adminApi.resetParticipantData();
+      alert(
+        `✅ Reset complete!\n\n` +
+        `• ${result.deletedUsers} participant accounts deleted\n` +
+        `• ${result.deletedSubmissions} submissions deleted\n` +
+        `• ${result.deletedParticipants} registrations deleted\n` +
+        `• ${result.deletedLeaderboardEntries} leaderboard entries deleted`
+      );
+      loadData(); // Refresh the dashboard
+    } catch (err: any) {
+      alert('❌ Reset failed: ' + (err?.response?.data?.message || err.message));
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const liveComp = competitions.find(c => c.status === 'LIVE');
   const stats = submissions ? {
@@ -114,6 +158,30 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="card mt-8 border-red-500/30">
+        <h2 className="font-semibold text-red-400 flex items-center gap-2 mb-3">
+          <Trash2 className="w-4 h-4" />
+          Danger Zone
+        </h2>
+        <p className="text-arena-text-dim text-sm mb-4">
+          Reset all participant data — this will permanently delete all participant accounts,
+          submissions, leaderboard entries, and competition registrations.
+          Competitions, problems, and test cases will be kept.
+        </p>
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg
+                     bg-red-500/10 text-red-400 border border-red-500/30
+                     hover:bg-red-500/20 hover:border-red-500/50
+                     disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          <RotateCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+          {resetting ? 'Resetting...' : 'Reset All Participant Data'}
+        </button>
       </div>
     </div>
   );

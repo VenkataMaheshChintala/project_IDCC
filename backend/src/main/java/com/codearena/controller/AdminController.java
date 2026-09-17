@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.data.domain.Page;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +21,13 @@ import com.codearena.dto.CompetitionDtos;
 
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -34,6 +39,10 @@ public class AdminController {
     private final LeaderboardService leaderboardService;
     private final CompetitionService competitionService;
     private final com.codearena.repository.SubmissionRepository submissionRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @GetMapping("/submissions")
     public ResponseEntity<Page<SubmissionDtos.SubmissionSummary>> listSubmissions(
@@ -132,5 +141,43 @@ public class AdminController {
                         "attachment; filename=\"submissions-" + competitionId + ".csv\"")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(sw.toString());
+    }
+
+    @PostMapping("/reset-participant-data")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> resetParticipantData() {
+        // Count before deleting for the response summary
+        Long submissionCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM submissions").getSingleResult();
+        Long participantCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM competition_participants").getSingleResult();
+        Long leaderboardCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM leaderboard_entries").getSingleResult();
+        Long userCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM users WHERE role != 'ADMIN'").getSingleResult();
+
+        // Truncate in foreign-key-safe order
+        entityManager.createNativeQuery("TRUNCATE submission_test_results CASCADE").executeUpdate();
+        entityManager.createNativeQuery("TRUNCATE submissions CASCADE").executeUpdate();
+        entityManager.createNativeQuery("TRUNCATE leaderboard_entries CASCADE").executeUpdate();
+        entityManager.createNativeQuery("TRUNCATE competition_participants CASCADE").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM users WHERE role != 'ADMIN'").executeUpdate();
+
+        // Flush Redis (clear active session keys)
+        try {
+            var connection = stringRedisTemplate.getConnectionFactory().getConnection();
+            connection.serverCommands().flushAll();
+            connection.close();
+        } catch (Exception ignored) {
+            // Redis flush is best-effort
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "All participant data has been reset",
+                "deletedSubmissions", submissionCount,
+                "deletedParticipants", participantCount,
+                "deletedLeaderboardEntries", leaderboardCount,
+                "deletedUsers", userCount
+        ));
     }
 }
