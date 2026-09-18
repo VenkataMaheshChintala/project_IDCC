@@ -15,7 +15,7 @@ public class ProblemDtos {
             String inputFormat,
             String outputFormat,
             String constraints,
-            @Positive int points,
+            @PositiveOrZero int points,
             @Positive int timeLimitMs,
             @Positive int memoryLimitMb
     ) {}
