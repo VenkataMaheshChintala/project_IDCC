@@ -28,7 +28,7 @@ import java.util.UUID;
 @Slf4j
 public class SubmissionService {
 
-    private static final Set<String> SUPPORTED_LANGUAGES = Set.of("JAVA", "C");
+    private static final Set<String> SUPPORTED_LANGUAGES = Set.of("JAVA", "C", "CPP", "PYTHON");
 
     private final SubmissionRepository submissionRepository;
     private final ProblemService problemService;
@@ -88,7 +88,12 @@ public class SubmissionService {
         log.info("[Submission] Created submissionId={} userId={} problemId={}",
                 submission.getId(), user.getId(), problemId);
 
-        String runnerCode = req.language().equalsIgnoreCase("C") ? problem.getCRunnerCode() : problem.getRunnerCode();
+        String runnerCode = null;
+        if (req.language().equalsIgnoreCase("C")) {
+            runnerCode = problem.getCRunnerCode();
+        } else if (req.language().equalsIgnoreCase("JAVA")) {
+            runnerCode = problem.getRunnerCode();
+        }
 
         // Push to judge queue
         JudgeJob job = JudgeJob.builder()
@@ -122,7 +127,12 @@ public class SubmissionService {
         validateCompetitionAcceptsSubmissions(problem.getCompetition());
         validateIsParticipant(problem.getCompetition(), user);
 
-        String runnerCode = req.language().equalsIgnoreCase("C") ? problem.getCRunnerCode() : problem.getRunnerCode();
+        String runnerCode = null;
+        if (req.language().equalsIgnoreCase("C")) {
+            runnerCode = problem.getCRunnerCode();
+        } else if (req.language().equalsIgnoreCase("JAVA")) {
+            runnerCode = problem.getRunnerCode();
+        }
 
         String runJobId = UUID.randomUUID().toString();
 

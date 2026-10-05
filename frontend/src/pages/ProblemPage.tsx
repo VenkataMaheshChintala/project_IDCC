@@ -35,6 +35,23 @@ int main() {
     return 0;
 }
 `;
+const DEFAULT_CPP = `#include <iostream>
+using namespace std;
+
+int main() {
+    // Your code here
+    
+    return 0;
+}
+`;
+
+const DEFAULT_PYTHON = `def main():
+    # Your code here
+    pass
+
+if __name__ == "__main__":
+    main()
+`;
 
 interface TestCase {
   id: number;
@@ -67,10 +84,12 @@ export default function ProblemPage() {
   const [competition, setCompetition] = useState<any>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const navigate = useNavigate();
-  const [language, setLanguage] = useState<'JAVA' | 'C'>('JAVA');
-  const [codes, setCodes] = useState<Record<'JAVA' | 'C', string>>({
+  const [language, setLanguage] = useState<'JAVA' | 'C' | 'CPP' | 'PYTHON'>('JAVA');
+  const [codes, setCodes] = useState<Record<'JAVA' | 'C' | 'CPP' | 'PYTHON', string>>({
     JAVA: DEFAULT_JAVA,
-    C: DEFAULT_C
+    C: DEFAULT_C,
+    CPP: DEFAULT_CPP,
+    PYTHON: DEFAULT_PYTHON
   });
   const code = codes[language];
   const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
@@ -125,14 +144,18 @@ export default function ProblemPage() {
 
     const savedJava = localStorage.getItem(`code-draft-${problemId}-JAVA`);
     const savedC = localStorage.getItem(`code-draft-${problemId}-C`);
+    const savedCpp = localStorage.getItem(`code-draft-${problemId}-CPP`);
+    const savedPython = localStorage.getItem(`code-draft-${problemId}-PYTHON`);
 
     Promise.all([
       problemApi.get(Number(problemId)),
       competitionApi.get(Number(compId)),
       problemApi.listByCompetition(Number(compId)).catch(() => []),
       problemApi.getDraft(Number(problemId), 'JAVA').catch(() => ({})),
-      problemApi.getDraft(Number(problemId), 'C').catch(() => ({}))
-    ]).then(([p, c, probs, javaDraft, cDraft]) => {
+      problemApi.getDraft(Number(problemId), 'C').catch(() => ({})),
+      problemApi.getDraft(Number(problemId), 'CPP').catch(() => ({})),
+      problemApi.getDraft(Number(problemId), 'PYTHON').catch(() => ({}))
+    ]).then(([p, c, probs, javaDraft, cDraft, cppDraft, pythonDraft]) => {
       // Check access controls
       if (!inAttempt && !isAdmin && c.status !== 'ENDED') {
         window.location.href = `/competitions/${compId}`;
@@ -145,7 +168,9 @@ export default function ProblemPage() {
       
       setCodes({
         JAVA: javaDraft.sourceCode || savedJava || p.starterCode || DEFAULT_JAVA,
-        C: cDraft.sourceCode || savedC || p.cStarterCode || DEFAULT_C
+        C: cDraft.sourceCode || savedC || p.cStarterCode || DEFAULT_C,
+        CPP: cppDraft.sourceCode || savedCpp || DEFAULT_CPP,
+        PYTHON: pythonDraft.sourceCode || savedPython || DEFAULT_PYTHON
       });
       
       if (p.sampleTestCases?.length > 0) {
@@ -305,7 +330,7 @@ export default function ProblemPage() {
     setShowResetConfirm(false);
   };
 
-  const handleLanguageChange = (newLang: 'JAVA' | 'C') => {
+  const handleLanguageChange = (newLang: 'JAVA' | 'C' | 'CPP' | 'PYTHON') => {
     setLanguage(newLang);
     setShowLanguageDropdown(false);
   };
@@ -640,7 +665,7 @@ export default function ProblemPage() {
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
                 className="flex items-center justify-between gap-2 w-28 text-xs px-2 py-1 rounded bg-arena-bg border border-arena-border text-arena-text-dim font-mono focus:outline-none hover:bg-arena-surface transition-colors"
               >
-                {language === 'JAVA' ? 'Java 21' : 'C (gcc)'}
+                {language === 'JAVA' ? 'Java 21' : language === 'C' ? 'C (gcc)' : language === 'CPP' ? 'C++ (g++)' : 'Python 3'}
                 <ChevronDown className="w-3 h-3 text-arena-muted" />
               </button>
               {showLanguageDropdown && (
@@ -649,6 +674,8 @@ export default function ProblemPage() {
                   <div className="absolute left-0 top-full mt-1 w-28 bg-arena-surface border border-arena-border rounded-lg shadow-xl z-50 overflow-hidden">
                     <button onClick={() => handleLanguageChange('JAVA')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'JAVA' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>Java 21</button>
                     <button onClick={() => handleLanguageChange('C')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'C' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>C (gcc)</button>
+                    <button onClick={() => handleLanguageChange('CPP')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'CPP' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>C++ (g++)</button>
+                    <button onClick={() => handleLanguageChange('PYTHON')} className={`w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 transition-colors ${language === 'PYTHON' ? 'text-arena-accent font-bold' : 'text-arena-text-dim'}`}>Python 3</button>
                   </div>
                 </>
               )}
@@ -678,7 +705,7 @@ export default function ProblemPage() {
           <div className="flex-1 overflow-hidden">
             <Editor
               height="100%"
-              language={language === 'JAVA' ? 'java' : 'c'}
+              language={language === 'JAVA' ? 'java' : language === 'C' ? 'c' : language === 'CPP' ? 'cpp' : 'python'}
               value={code}
               onChange={val => setCodes(prev => ({ ...prev, [language]: val || '' }))}
               onMount={handleEditorDidMount}

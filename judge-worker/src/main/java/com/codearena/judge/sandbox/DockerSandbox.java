@@ -90,6 +90,8 @@ public class DockerSandbox {
         private final Path workDir;
         private final String language;
         private final boolean isC;
+        private final boolean isCpp;
+        private final boolean isPython;
         private final boolean hasRunner;
         private final int memoryLimitMb;
         private boolean closed = false;
@@ -99,6 +101,8 @@ public class DockerSandbox {
             this.workDir = workDir;
             this.language = language;
             this.isC = "C".equalsIgnoreCase(language);
+            this.isCpp = "CPP".equalsIgnoreCase(language);
+            this.isPython = "PYTHON".equalsIgnoreCase(language);
             this.hasRunner = hasRunner;
             this.memoryLimitMb = memoryLimitMb;
         }
@@ -113,6 +117,14 @@ public class DockerSandbox {
                 compileCmd = hasRunner ?
                         new String[]{"gcc", "/workspace/main.c", "/workspace/solution.c", "-o", "/workspace/main", "-O2", "-lm"} :
                         new String[]{"gcc", "/workspace/main.c", "-o", "/workspace/main", "-O2", "-lm"};
+            } else if (isCpp) {
+                compileCmd = hasRunner ?
+                        new String[]{"g++", "/workspace/main.cpp", "/workspace/solution.cpp", "-o", "/workspace/main", "-O2", "-lm"} :
+                        new String[]{"g++", "/workspace/main.cpp", "-o", "/workspace/main", "-O2", "-lm"};
+            } else if (isPython) {
+                compileCmd = hasRunner ? 
+                        new String[]{"python3", "-m", "py_compile", "/workspace/main.py", "/workspace/solution.py"} :
+                        new String[]{"python3", "-m", "py_compile", "/workspace/main.py"};
             } else {
                 compileCmd = hasRunner ?
                         new String[]{"javac", "/workspace/Solution.java", "/workspace/Main.java", "-d", "/workspace"} :
@@ -154,10 +166,15 @@ public class DockerSandbox {
             long execStart = System.currentTimeMillis();
             String inputFile = "/workspace/input_" + testCaseIndex + ".txt";
             String[] runCmd;
-            if (isC) {
+            if (isC || isCpp) {
                 runCmd = new String[]{
                         "sh", "-c",
                         "cd /workspace && ./main < " + inputFile
+                };
+            } else if (isPython) {
+                runCmd = new String[]{
+                        "sh", "-c",
+                        "cd /workspace && python3 main.py < " + inputFile
                 };
             } else {
                 runCmd = new String[]{
@@ -236,6 +253,8 @@ public class DockerSandbox {
         try {
             boolean hasRunner = runnerCode != null && !runnerCode.trim().isEmpty();
             boolean isC = "C".equalsIgnoreCase(language);
+            boolean isCpp = "CPP".equalsIgnoreCase(language);
+            boolean isPython = "PYTHON".equalsIgnoreCase(language);
 
             List<String> filesToTar = new ArrayList<>();
             if (isC) {
@@ -247,6 +266,26 @@ public class DockerSandbox {
                 } else {
                     Files.writeString(workDir.resolve("main.c"), sourceCode, StandardCharsets.UTF_8);
                     filesToTar.add("main.c");
+                }
+            } else if (isCpp) {
+                if (hasRunner) {
+                    Files.writeString(workDir.resolve("solution.cpp"), sourceCode, StandardCharsets.UTF_8);
+                    Files.writeString(workDir.resolve("main.cpp"), runnerCode, StandardCharsets.UTF_8);
+                    filesToTar.add("main.cpp");
+                    filesToTar.add("solution.cpp");
+                } else {
+                    Files.writeString(workDir.resolve("main.cpp"), sourceCode, StandardCharsets.UTF_8);
+                    filesToTar.add("main.cpp");
+                }
+            } else if (isPython) {
+                if (hasRunner) {
+                    Files.writeString(workDir.resolve("solution.py"), sourceCode, StandardCharsets.UTF_8);
+                    Files.writeString(workDir.resolve("main.py"), runnerCode, StandardCharsets.UTF_8);
+                    filesToTar.add("main.py");
+                    filesToTar.add("solution.py");
+                } else {
+                    Files.writeString(workDir.resolve("main.py"), sourceCode, StandardCharsets.UTF_8);
+                    filesToTar.add("main.py");
                 }
             } else {
                 if (hasRunner) {
