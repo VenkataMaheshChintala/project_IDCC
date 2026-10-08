@@ -42,6 +42,9 @@ public class Competition {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "allow_partial_marking", nullable = false)
+    private boolean allowPartialMarking = false;
+
     @OneToMany(mappedBy = "competition", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Problem> problems = new ArrayList<>();

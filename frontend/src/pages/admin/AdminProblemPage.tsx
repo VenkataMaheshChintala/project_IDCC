@@ -31,10 +31,11 @@ export default function AdminProblemPage() {
   const [showDeleteProblemModal, setShowDeleteProblemModal] = useState(false);
   const [deleteTcId, setDeleteTcId] = useState<number | null>(null);
 
-  // Inline edit state
   const [editingTcId, setEditingTcId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [savingTc, setSavingTc] = useState(false);
+
+  const [allowPartialMarking, setAllowPartialMarking] = useState(false);
 
   // Derived total points = sum of saved test case points + what admin is currently typing in "add" form
   const savedPoints = useMemo(() => testCases.reduce((s, tc) => s + (tc.points || 0), 0), [testCases]);
@@ -56,18 +57,27 @@ export default function AdminProblemPage() {
           timeLimitMs: p.timeLimitMs || 2000,
           memoryLimitMb: p.memoryLimitMb || 256
         });
+        if (p.competitionId) {
+          import('../../api/endpoints').then(({ competitionApi }) => {
+            competitionApi.get(p.competitionId).then((comp: any) => setAllowPartialMarking(comp.allowPartialMarking));
+          });
+        }
       }).catch(() => setError('Failed to load problem'))
         .finally(() => setLoading(false));
+    } else if (compId) {
+      import('../../api/endpoints').then(({ competitionApi }) => {
+        competitionApi.get(Number(compId)).then((comp: any) => setAllowPartialMarking(comp.allowPartialMarking));
+      });
     }
-  }, [problemId, isNew]);
+  }, [problemId, isNew, compId]);
 
   const handleSave = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
     try {
-      // Sync stored points with the sum of existing test case points
-      const payload = { ...form, points: savedPoints };
+      // Sync stored points if partial marking is ON, otherwise use form's points
+      const payload = { ...form, points: allowPartialMarking ? savedPoints : form.points };
       if (isNew) {
         if (!compId) { setError('Missing competitionId'); return; }
         const created = await problemApi.create(Number(compId), payload);
@@ -109,10 +119,12 @@ export default function AdminProblemPage() {
       });
       const updatedTcs = [...testCases, tc];
       setTestCases(updatedTcs);
-      // Sync problem points with the new total
-      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
-      await problemApi.update(Number(problemId), { ...form, points: newTotal });
-      setForm(f => ({ ...f, points: newTotal }));
+      if (allowPartialMarking) {
+        // Sync problem points with the new total
+        const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+        await problemApi.update(Number(problemId), { ...form, points: newTotal });
+        setForm(f => ({ ...f, points: newTotal }));
+      }
       setNewTestCase({ input: '', expectedOutput: '', sample: false, hidden: true, points: 0, orderIndex: 0 });
       setSuccess('Test case added');
       setTimeout(() => setSuccess(''), 2000);
@@ -128,10 +140,12 @@ export default function AdminProblemPage() {
       await problemApi.deleteTestCase(tcId);
       const updatedTcs = testCases.filter(tc => tc.id !== tcId);
       setTestCases(updatedTcs);
-      // Sync problem points with the new total
-      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
-      await problemApi.update(Number(problemId), { ...form, points: newTotal });
-      setForm(f => ({ ...f, points: newTotal }));
+      if (allowPartialMarking) {
+        // Sync problem points with the new total
+        const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+        await problemApi.update(Number(problemId), { ...form, points: newTotal });
+        setForm(f => ({ ...f, points: newTotal }));
+      }
     } catch (err: any) {
       setError('Failed to delete test case');
     }
@@ -153,10 +167,12 @@ export default function AdminProblemPage() {
       const updated = await problemApi.updateTestCase(tcId, editForm);
       const updatedTcs = testCases.map(tc => tc.id === tcId ? updated : tc);
       setTestCases(updatedTcs);
-      // Sync problem points
-      const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
-      await problemApi.update(Number(problemId), { ...form, points: newTotal });
-      setForm(f => ({ ...f, points: newTotal }));
+      if (allowPartialMarking) {
+        // Sync problem points
+        const newTotal = updatedTcs.reduce((s, t) => s + (t.points || 0), 0);
+        await problemApi.update(Number(problemId), { ...form, points: newTotal });
+        setForm(f => ({ ...f, points: newTotal }));
+      }
       setEditingTcId(null);
       setEditForm({});
       setSuccess('Test case updated');
@@ -200,6 +216,14 @@ export default function AdminProblemPage() {
               <input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toUpperCase() }))}
                 className="input font-mono uppercase" placeholder="A" maxLength={10} />
             </div>
+            {!allowPartialMarking && (
+              <div>
+                <label className="block text-sm text-arena-text-dim mb-1.5">Problem Points</label>
+                <input type="number" value={form.points} min={0}
+                  onChange={e => setForm(f => ({ ...f, points: Number(e.target.value) }))}
+                  className="input" />
+              </div>
+            )}
           </div>
 
           <div>
@@ -301,12 +325,14 @@ export default function AdminProblemPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-arena-text">Test Cases ({testCases.length})</h2>
               {/* Live derived total points */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-arena-muted">Total Points:</span>
-                <span className="badge bg-arena-accent/15 text-arena-accent border border-arena-accent/30 text-sm font-bold">
-                  {derivedPoints} pts
-                </span>
-              </div>
+              {allowPartialMarking && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-arena-muted">Total Points:</span>
+                  <span className="badge bg-arena-accent/15 text-arena-accent border border-arena-accent/30 text-sm font-bold">
+                    {derivedPoints} pts
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Existing test cases */}
@@ -352,12 +378,14 @@ export default function AdminProblemPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <div>
-                            <label className="text-xs text-arena-muted mb-1 block">Points</label>
-                            <input type="number" value={editForm.points} min={0}
-                              onChange={e => setEditForm((f: any) => ({ ...f, points: Number(e.target.value) }))}
-                              className="input py-1 px-2 text-xs w-24" />
-                          </div>
+                          {allowPartialMarking && (
+                            <div>
+                              <label className="text-xs text-arena-muted mb-1 block">Points</label>
+                              <input type="number" value={editForm.points} min={0}
+                                onChange={e => setEditForm((f: any) => ({ ...f, points: Number(e.target.value) }))}
+                                className="input py-1 px-2 text-xs w-24" />
+                            </div>
+                          )}
                           <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-4">
                             <input type="checkbox" checked={editForm.sample}
                               onChange={e => setEditForm((f: any) => ({ ...f, sample: e.target.checked }))}
@@ -378,7 +406,9 @@ export default function AdminProblemPage() {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-arena-muted font-mono">#{tc.orderIndex || i + 1}</span>
-                            <span className="badge bg-arena-accent/10 text-arena-accent border border-arena-accent/20">{tc.points} pts</span>
+                            {allowPartialMarking && (
+                              <span className="badge bg-arena-accent/10 text-arena-accent border border-arena-accent/20">{tc.points} pts</span>
+                            )}
                             {tc.sample && <span className="badge bg-blue-500/10 text-blue-400 border border-blue-500/20">Sample</span>}
                             {tc.hidden && <span className="badge bg-gray-500/10 text-gray-500 border border-gray-500/20 flex items-center gap-1"><EyeOff className="w-3 h-3" />Hidden</span>}
                           </div>
@@ -428,12 +458,14 @@ export default function AdminProblemPage() {
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                <div>
-                  <label className="text-xs text-arena-muted mb-1 block">Points</label>
-                  <input type="number" value={newTestCase.points} min={0}
-                    onChange={e => setNewTestCase(t => ({ ...t, points: Number(e.target.value) }))}
-                    className="input py-1 px-2 text-xs w-24" />
-                </div>
+                {allowPartialMarking && (
+                  <div>
+                    <label className="text-xs text-arena-muted mb-1 block">Points</label>
+                    <input type="number" value={newTestCase.points} min={0}
+                      onChange={e => setNewTestCase(t => ({ ...t, points: Number(e.target.value) }))}
+                      className="input py-1 px-2 text-xs w-24" />
+                  </div>
+                )}
                 <label className="flex items-center gap-2 text-sm text-arena-text-dim cursor-pointer mt-5">
                   <input type="checkbox" checked={newTestCase.sample}
                     onChange={e => setNewTestCase(t => ({ ...t, sample: e.target.checked }))}

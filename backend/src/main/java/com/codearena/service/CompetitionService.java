@@ -120,6 +120,7 @@ public class CompetitionService {
                 .description(req.description())
                 .rules(req.rules())
                 .timeLimitMinutes(req.timeLimitMinutes())
+                .allowPartialMarking(req.allowPartialMarking() != null ? req.allowPartialMarking() : false)
                 .status(Competition.Status.DRAFT)
                 .createdBy(admin)
                 .build();
@@ -135,6 +136,14 @@ public class CompetitionService {
         if (req.description() != null) c.setDescription(req.description());
         if (req.rules() != null) c.setRules(req.rules());
         if (req.timeLimitMinutes() != null) c.setTimeLimitMinutes(req.timeLimitMinutes());
+        
+        if (req.allowPartialMarking() != null && req.allowPartialMarking() != c.isAllowPartialMarking()) {
+            if (c.getStatus() == Competition.Status.LIVE) {
+                throw new BadRequestException("Cannot toggle partial marking while the competition is live");
+            }
+            c.setAllowPartialMarking(req.allowPartialMarking());
+        }
+
         if (req.status() != null) {
             validateStatusTransition(c.getStatus(), req.status());
             c.setStatus(req.status());
@@ -285,7 +294,7 @@ public class CompetitionService {
                 c.getId(), c.getName(), c.getDescription(), c.getRules(),
                 c.getStatus().name(),
                 participantCount, c.getCreatedAt(), c.getUpdatedAt(),
-                Instant.now(), c.getTimeLimitMinutes(), joined, attemptCompleted, attemptStartedAt
+                Instant.now(), c.getTimeLimitMinutes(), c.isAllowPartialMarking(), joined, attemptCompleted, attemptStartedAt
         );
     }
 
@@ -293,7 +302,7 @@ public class CompetitionService {
         return new CompetitionDtos.CompetitionSummary(
                 c.getId(), c.getName(), c.getDescription(),
                 c.getStatus().name(),
-                c.getTimeLimitMinutes(), participantCount, joined, attemptCompleted, attemptStartedAt
+                c.getTimeLimitMinutes(), c.isAllowPartialMarking(), participantCount, joined, attemptCompleted, attemptStartedAt
         );
     }
     // ─── Export ───────────────────────────────────────────────────────────────

@@ -13,7 +13,8 @@ public class CompetitionDtos {
             @NotBlank String name,
             String description,
             @NotBlank(message = "Rules cannot be left blank. Please specify the competition rules.") String rules,
-            Integer timeLimitMinutes
+            Integer timeLimitMinutes,
+            Boolean allowPartialMarking
     ) {}
 
     public record UpdateRequest(
@@ -21,6 +22,7 @@ public class CompetitionDtos {
             String description,
             @NotBlank(message = "Rules cannot be left blank. Please specify the competition rules.") String rules,
             Integer timeLimitMinutes,
+            Boolean allowPartialMarking,
             Competition.Status status
     ) {}
 
@@ -36,6 +38,7 @@ public class CompetitionDtos {
             // server time for client sync
             Instant serverTime,
             Integer timeLimitMinutes,
+            boolean allowPartialMarking,
             boolean joined,
             boolean attemptCompleted,
             Instant attemptStartedAt
@@ -47,6 +50,7 @@ public class CompetitionDtos {
             String description,
             String status,
             Integer timeLimitMinutes,
+            boolean allowPartialMarking,
             long participantCount,
             boolean joined,
             boolean attemptCompleted,

@@ -145,6 +145,17 @@ public class SubmissionStore {
         }
     }
 
+    public boolean getAllowPartialMarking(Long competitionId) {
+        try {
+            Boolean allow = jdbc.queryForObject(
+                    "SELECT allow_partial_marking FROM competitions WHERE id = ?",
+                    Boolean.class, competitionId);
+            return allow != null && allow;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public void updateLeaderboard(Long competitionId, Long userId) {
         // Recalculate total score from highest score per problem (including partial scores)
         jdbc.update("""

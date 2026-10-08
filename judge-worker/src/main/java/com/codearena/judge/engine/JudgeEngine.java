@@ -58,8 +58,15 @@ public class JudgeEngine {
         String compilationError = null;
         int passedTestCases = 0;
 
-        for (TestCaseRecord tc : testCases) {
-            maxScore += tc.points();
+        boolean allowPartialMarking = submissionStore.getAllowPartialMarking(job.getCompetitionId());
+        int problemPoints = submissionStore.getProblemPoints(job.getProblemId());
+
+        if (allowPartialMarking) {
+            for (TestCaseRecord tc : testCases) {
+                maxScore += tc.points();
+            }
+        } else {
+            maxScore = problemPoints;
         }
 
         List<String> inputs = testCases.stream()
@@ -102,8 +109,10 @@ public class JudgeEngine {
                         boolean correct = comparator.matches(tc.expectedOutput(), execResult.getStdout());
                         if (correct) {
                             tcStatus = "ACCEPTED";
-                            pointsEarned = tc.points();
-                            totalScore += pointsEarned;
+                            if (allowPartialMarking) {
+                                pointsEarned = tc.points();
+                                totalScore += pointsEarned;
+                            }
                             passedTestCases++;
                         } else {
                             tcStatus = "WRONG_ANSWER";
@@ -156,6 +165,9 @@ public class JudgeEngine {
         // Determine final status based on partial completion
         if (passedTestCases == testCases.size() && testCases.size() > 0) {
             finalStatus = "ACCEPTED";
+            if (!allowPartialMarking) {
+                totalScore = problemPoints;
+            }
         } else if (passedTestCases > 0 && passedTestCases < testCases.size()) {
             finalStatus = "PARTIAL";
         } else {

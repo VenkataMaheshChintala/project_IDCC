@@ -22,6 +22,7 @@ interface CompetitionForm {
   description: string;
   rules: string;
   timeLimitMinutes?: number | '';
+  allowPartialMarking?: boolean;
   status?: string;
 }
 
@@ -33,7 +34,7 @@ export default function AdminCompetitionPage() {
   const [competition, setCompetition] = useState<any>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const [form, setForm] = useState<CompetitionForm>({
-    name: '', description: '', rules: '', timeLimitMinutes: '', status: ''
+    name: '', description: '', rules: '', timeLimitMinutes: '', allowPartialMarking: false, status: ''
   });
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -55,6 +56,7 @@ export default function AdminCompetitionPage() {
           description: comp.description || '',
           rules: comp.rules || '',
           timeLimitMinutes: comp.timeLimitMinutes || '',
+          allowPartialMarking: comp.allowPartialMarking || false,
           status: comp.status || ''
         });
       }).finally(() => setLoading(false));
@@ -266,6 +268,22 @@ export default function AdminCompetitionPage() {
                     className="input py-2.5 w-full" placeholder="e.g. 120" />
                   <p className="text-xs text-arena-muted mt-1">Leave empty for no time limit.</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-arena-text-dim mb-1.5">Scoring Settings</label>
+                  <label className="flex items-center gap-2 text-sm text-arena-text mt-3 cursor-pointer">
+                    <input type="checkbox" checked={form.allowPartialMarking}
+                      disabled={competition?.status === 'LIVE'}
+                      onChange={e => setForm(f => ({ ...f, allowPartialMarking: e.target.checked }))}
+                      className="rounded" />
+                    Allow Partial Marking
+                  </label>
+                  <p className="text-xs text-arena-muted mt-1">
+                    If checked, test cases have individual points. If unchecked, the problem has points awarded only if all test cases pass.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 {!isNew && (
                   <div>
                     <label className="block text-sm font-medium text-arena-text-dim mb-1.5">Status</label>
