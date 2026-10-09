@@ -23,8 +23,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: codearena-redis
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -114,3 +117,4 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
