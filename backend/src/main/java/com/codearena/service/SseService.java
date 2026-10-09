@@ -98,6 +98,14 @@ public class SseService {
         return Set.copyOf(submissionEmitters.keySet());
     }
 
+    public int getActiveConnectionCount() {
+        int count = 0;
+        for (Set<SseEmitter> emitters : submissionEmitters.values()) count += emitters.size();
+        for (Map<Long, SseEmitter> emitters : leaderboardEmitters.values()) count += emitters.size();
+        for (Set<SseEmitter> emitters : runEmitters.values()) count += emitters.size();
+        return count;
+    }
+
     private void send(SseEmitter emitter, String eventName, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);

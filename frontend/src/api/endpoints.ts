@@ -77,4 +77,5 @@ export const adminApi = {
     api.get(`/admin/competitions/${competitionId}/submissions/export`, { responseType: 'blob' }),
   resetParticipantData: () =>
     api.post('/admin/reset-participant-data').then(r => r.data),
+  getSystemHealth: () => api.get('/admin/system/health').then(r => r.data),
 };

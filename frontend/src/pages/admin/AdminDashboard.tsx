@@ -4,7 +4,7 @@ import { competitionApi, problemApi, adminApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/StatusBadge';
 import {
   LayoutDashboard, Trophy, ClipboardList, Users,
-  CheckCircle2, XCircle, Clock, Activity, Plus, Settings, Trash2, RotateCw
+  CheckCircle2, XCircle, Clock, Activity, Plus, Settings, Trash2, RotateCw, Server, Cpu, Zap
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [submissions, setSubmissions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
+  const [health, setHealth] = useState<any>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -26,6 +27,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
+    
+    // Poll system health
+    const fetchHealth = () => adminApi.getSystemHealth().then(setHealth).catch(() => {});
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleReset = async () => {
@@ -112,6 +119,44 @@ export default function AdminDashboard() {
           <p className="text-arena-muted text-xs mt-0.5">{liveComp?.name || 'No live contest'}</p>
         </a>
       </div>
+
+      {/* System Health */}
+      {health && (
+        <div className="card mb-8 animate-fade-in">
+          <h2 className="font-semibold text-arena-text flex items-center gap-2 mb-4">
+            <Server className="w-5 h-5 text-arena-blue" />
+            Live System Health
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-arena-bg-subtle rounded-lg p-3 border border-arena-border">
+              <div className="flex items-center gap-2 text-arena-muted text-xs mb-1">
+                <Users className="w-3.5 h-3.5" /> Active Connections (SSE)
+              </div>
+              <div className="text-xl font-bold text-arena-text">{health.totalSseConnections}</div>
+            </div>
+            <div className="bg-arena-bg-subtle rounded-lg p-3 border border-arena-border">
+              <div className="flex items-center gap-2 text-arena-muted text-xs mb-1">
+                <Zap className="w-3.5 h-3.5" /> Judge Queue Depth
+              </div>
+              <div className="text-xl font-bold text-arena-accent">{health.submissionQueueDepth}</div>
+            </div>
+            <div className="bg-arena-bg-subtle rounded-lg p-3 border border-arena-border">
+              <div className="flex items-center gap-2 text-arena-muted text-xs mb-1">
+                <Activity className="w-3.5 h-3.5" /> Run Queue Depth
+              </div>
+              <div className="text-xl font-bold text-arena-green">{health.runQueueDepth}</div>
+            </div>
+            <div className="bg-arena-bg-subtle rounded-lg p-3 border border-arena-border">
+              <div className="flex items-center gap-2 text-arena-muted text-xs mb-1">
+                <Cpu className="w-3.5 h-3.5" /> JVM Memory Used
+              </div>
+              <div className="text-xl font-bold text-arena-text">
+                {health.jvmMemoryUsedMb} <span className="text-sm font-normal text-arena-muted">/ {health.jvmMemoryMaxMb} MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Competitions Table */}
       <div id="competitions-section" className="card">
